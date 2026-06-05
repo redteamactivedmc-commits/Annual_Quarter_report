@@ -6,6 +6,11 @@ from pptx.enum.shapes import MSO_SHAPE
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
 from pptx.chart.data import ChartData
 import os
+import glob as _glob
+
+# Base directory for resolving input paths relative to the package
+_PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_INPUT_DIR = os.path.join(_PKG_DIR, "input")
 
 COLORS = {
     "teal_primary": "0097B2",
@@ -100,15 +105,76 @@ def add_teal_background(slide):
     fill.fore_color.rgb = hex_to_rgb("0097B2")
 
 
-def load_logo(client_name, assets_dir="./assets"):
-    variants = [client_name, client_name.lower(), client_name.upper(),
-                client_name.replace(" ", "_"), client_name.replace(" ", "-")]
+def load_logo(client_name, assets_dir=None):
+    """Find a client logo image.
+
+    Lookup order:
+      1. input/logos/clients/{ClientName}.{ext}   (exact)
+      2. input/logos/clients/{clientname}.{ext}    (lowercase)
+      3. input/logos/clients/{CLIENTNAME}.{ext}    (uppercase)
+    Extensions tried: .png, .jpg, .jpeg, .webp
+    Falls back to legacy assets_dir if provided.
+    """
+    clients_dir = os.path.join(_INPUT_DIR, "logos", "clients")
+    variants = [client_name, client_name.lower(), client_name.upper()]
     extensions = [".png", ".jpg", ".jpeg", ".webp"]
+
     for name in variants:
         for ext in extensions:
-            path = os.path.join(assets_dir, "clients", name + ext)
+            path = os.path.join(clients_dir, name + ext)
             if os.path.exists(path):
                 return path
+
+    # Legacy fallback
+    if assets_dir:
+        legacy_variants = [client_name, client_name.lower(), client_name.upper(),
+                           client_name.replace(" ", "_"), client_name.replace(" ", "-")]
+        for name in legacy_variants:
+            for ext in extensions:
+                path = os.path.join(assets_dir, "clients", name + ext)
+                if os.path.exists(path):
+                    return path
+
+    return None
+
+
+def load_admc_logo():
+    """Find the Active DMC logo image.
+
+    Lookup order:
+      1. input/logos/active_dmc/active_dmc_logo.png
+      2. input/logos/active_dmc/logo.png
+      3. Any image file in input/logos/active_dmc/
+    Returns the path if found, else None.
+    """
+    admc_dir = os.path.join(_INPUT_DIR, "logos", "active_dmc")
+
+    # Specific names first
+    for candidate in ["active_dmc_logo.png", "logo.png"]:
+        path = os.path.join(admc_dir, candidate)
+        if os.path.exists(path):
+            return path
+
+    # Any image file in the directory
+    image_exts = ("*.png", "*.jpg", "*.jpeg", "*.webp")
+    for ext_pattern in image_exts:
+        matches = _glob.glob(os.path.join(admc_dir, ext_pattern))
+        if matches:
+            return matches[0]
+
+    return None
+
+
+def load_cover_image():
+    """Find a cover image in input/images/.
+
+    Checks cover.png then cover.jpg.
+    """
+    images_dir = os.path.join(_INPUT_DIR, "images")
+    for name in ["cover.png", "cover.jpg"]:
+        path = os.path.join(images_dir, name)
+        if os.path.exists(path):
+            return path
     return None
 
 
@@ -123,19 +189,46 @@ def build_cover_slide(prs, blank, client, period):
                  font_size=16, color="FFFFFF")
     add_text_box(slide, "By Active Digital Marketing Communications", 0.8, 4.3, 6, 0.5,
                  font_size=12, color="FFFFFF")
-    shape = slide.shapes.add_shape(
-        MSO_SHAPE.RECTANGLE,
-        Inches(7.5), Inches(0.8), Inches(5.2), Inches(5.5)
-    )
-    shape.fill.solid()
-    shape.fill.fore_color.rgb = hex_to_rgb("007A91")
-    shape.line.fill.background()
-    add_text_box(slide, "[Professional Photo]", 8.5, 3.2, 3, 0.5,
-                 font_size=12, color="B3E0EA", align=PP_ALIGN.CENTER)
-    add_text_box(slide, "Active DMC", 0.8, 6.5, 2, 0.4,
-                 font_size=11, bold=True, color="FFFFFF")
-    add_text_box(slide, client, SLIDE_W - 3, 6.5, 2.5, 0.4,
-                 font_size=11, bold=True, color="FFFFFF", align=PP_ALIGN.RIGHT)
+
+    # Cover image or placeholder rectangle
+    cover_img = load_cover_image()
+    if cover_img:
+        slide.shapes.add_picture(
+            cover_img,
+            Inches(7.5), Inches(0.8), Inches(5.2), Inches(5.5)
+        )
+    else:
+        shape = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE,
+            Inches(7.5), Inches(0.8), Inches(5.2), Inches(5.5)
+        )
+        shape.fill.solid()
+        shape.fill.fore_color.rgb = hex_to_rgb("007A91")
+        shape.line.fill.background()
+        add_text_box(slide, "[Professional Photo]", 8.5, 3.2, 3, 0.5,
+                     font_size=12, color="B3E0EA", align=PP_ALIGN.CENTER)
+
+    # Active DMC logo or text fallback
+    admc_logo = load_admc_logo()
+    if admc_logo:
+        slide.shapes.add_picture(
+            admc_logo,
+            Inches(0.8), Inches(6.3), Inches(1.5), Inches(0.5)
+        )
+    else:
+        add_text_box(slide, "Active DMC", 0.8, 6.5, 2, 0.4,
+                     font_size=11, bold=True, color="FFFFFF")
+
+    # Client logo or text fallback
+    client_logo = load_logo(client)
+    if client_logo:
+        slide.shapes.add_picture(
+            client_logo,
+            Inches(SLIDE_W - 2.5), Inches(6.3), Inches(1.5), Inches(0.5)
+        )
+    else:
+        add_text_box(slide, client, SLIDE_W - 3, 6.5, 2.5, 0.4,
+                     font_size=11, bold=True, color="FFFFFF", align=PP_ALIGN.RIGHT)
 
 
 def build_contents_slide(prs, blank, client, sections):
@@ -498,10 +591,29 @@ def build_closing_slide(prs, blank, client):
     shape.line.fill.background()
     add_text_box(slide, "Thank you!", 1, 2.5, 5, 1.5,
                  font_size=44, bold=True, color="FFFFFF")
-    add_text_box(slide, "Active DMC", 7.5, 1.5, 5, 0.5,
-                 font_size=24, bold=True, color="0097B2")
+
+    # Active DMC logo or text fallback
+    admc_logo = load_admc_logo()
+    if admc_logo:
+        slide.shapes.add_picture(
+            admc_logo,
+            Inches(7.5), Inches(1.2), Inches(2.5), Inches(0.8)
+        )
+    else:
+        add_text_box(slide, "Active DMC", 7.5, 1.5, 5, 0.5,
+                     font_size=24, bold=True, color="0097B2")
+
     add_text_box(slide, "DIGITAL  •  MARKETING  •  COMMUNICATIONS", 7.5, 2.2, 5, 0.4,
                  font_size=11, color="0097B2")
+
+    # Client logo (bottom-right of the closing slide)
+    client_logo = load_logo(client)
+    if client_logo:
+        slide.shapes.add_picture(
+            client_logo,
+            Inches(7.5), Inches(5.5), Inches(2.0), Inches(0.7)
+        )
+
     contact_lines = [
         "info@activedmc.com",
         "Dubai, United Arab Emirates",

@@ -8,6 +8,8 @@ import threading
 import webbrowser
 from pathlib import Path
 from datetime import datetime
+import calendar
+import re
 
 # Ensure the package root is on sys.path so internal imports work
 # whether you run `python app.py` or `python -m admc_report_agent.app`
@@ -194,6 +196,51 @@ def generate_report():
     return jsonify({"job_id": job_id})
 
 
+def _parse_period_dates(period):
+    """
+    Parse a period string like "2026-01 – 2026-03" into (start_date, end_date)
+    as YYYY-MM-DD strings.
+
+    Supports formats:
+        "2026-01 – 2026-03"  (YYYY-MM range)
+        "2026-01"            (single month)
+
+    Returns (period_start, period_end) as YYYY-MM-DD strings, or (None, None).
+    """
+    if not period:
+        return None, None
+
+    # Split on dash/en-dash/em-dash with optional spaces
+    parts = re.split(r'\s*[–—]\s*', period.strip())
+    # Fall back to splitting on regular hyphen only if it separates YYYY-MM tokens
+    if len(parts) == 1:
+        # Try splitting on " - " (space-hyphen-space) to avoid splitting YYYY-MM
+        parts = re.split(r'\s+-\s+', period.strip())
+    parts = [p.strip() for p in parts if p.strip()]
+
+    def month_str_to_dates(s):
+        """Convert 'YYYY-MM' or 'YYYY-MM-DD' to (first_day, last_day) strings."""
+        s = s.strip()
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
+            return s, s
+        m = re.match(r'^(\d{4})-(\d{2})$', s)
+        if m:
+            year, month = int(m.group(1)), int(m.group(2))
+            last_day = calendar.monthrange(year, month)[1]
+            return f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{last_day:02d}"
+        return None, None
+
+    if len(parts) == 1:
+        start, end = month_str_to_dates(parts[0])
+        return start, end
+    elif len(parts) >= 2:
+        start, _ = month_str_to_dates(parts[0])
+        _, end = month_str_to_dates(parts[-1])
+        return start, end
+
+    return None, None
+
+
 def _run_generation(job_id, client_name, period, tracker_path):
     """Background report generation."""
     try:
@@ -214,10 +261,15 @@ def _run_generation(job_id, client_name, period, tracker_path):
 
         asana_token = os.getenv("ASANA_PAT")
         deliverables = []
+        period_start_date, period_end_date = _parse_period_dates(period)
         if asana_token:
             try:
                 from data_sources.asana_fetcher import fetch_asana_data
-                asana_data = fetch_asana_data(client_name, asana_token)
+                asana_data = fetch_asana_data(
+                    client_name, asana_token,
+                    period_start=period_start_date,
+                    period_end=period_end_date,
+                )
                 deliverables = asana_data.get("deliverables", [])
             except Exception as e:
                 pass
@@ -316,6 +368,27 @@ def asana_setup():
         ],
         "note": "The token gives read access to your Asana workspace. Store it securely."
     })
+
+
+@app.route("/api/assets")
+def list_assets():
+    """List available logos and images in the input folder."""
+    input_dir = os.path.join(_THIS_DIR, "input")
+    assets = {"client_logos": [], "admc_logos": [], "images": []}
+
+    clients_dir = os.path.join(input_dir, "logos", "clients")
+    if os.path.exists(clients_dir):
+        assets["client_logos"] = [f for f in os.listdir(clients_dir) if not f.startswith(".")]
+
+    admc_dir = os.path.join(input_dir, "logos", "active_dmc")
+    if os.path.exists(admc_dir):
+        assets["admc_logos"] = [f for f in os.listdir(admc_dir) if not f.startswith(".")]
+
+    images_dir = os.path.join(input_dir, "images")
+    if os.path.exists(images_dir):
+        assets["images"] = [f for f in os.listdir(images_dir) if not f.startswith(".")]
+
+    return jsonify(assets)
 
 
 if __name__ == "__main__":

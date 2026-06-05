@@ -1,490 +1,1584 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Active DMC · Reporting Agent</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:'Montserrat',Arial,sans-serif;background:#f7f8fa;color:#1A2B4A;min-height:100vh}
-:root{--teal:#0097B2;--teal-dark:#007A91;--teal-light:#E8F7FA;--teal-mid:#B3E0EA;--navy:#1A2B4A;--dark:#0D1B2E;--gray:#6b7280;--gray-light:#f5f5f5;--border:#e2e5ea;--white:#fff;--danger:#e53e3e;--success:#38a169}
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active DMC - Reporting Agent</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
 
-.header{background:var(--white);border-bottom:3px solid var(--teal);padding:16px 32px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
-.header-left{display:flex;align-items:center;gap:12px}
-.header-dot{width:12px;height:12px;border-radius:50%;background:var(--teal)}
-.header-title{font-size:17px;font-weight:600;color:var(--dark)}
-.header-sub{font-size:11px;color:var(--gray);font-style:italic}
-.header-right{display:flex;align-items:center;gap:12px}
-.gear-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--gray);display:flex;align-items:center;gap:6px;transition:all .15s}
-.gear-btn:hover{border-color:var(--teal);color:var(--teal)}
+        :root {
+            --teal: #0097B2;
+            --teal-dark: #007a91;
+            --teal-light: #e6f6f9;
+            --teal-muted: #b3e0ea;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-400: #9ca3af;
+            --gray-500: #6b7280;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+            --gray-900: #111827;
+            --red: #ef4444;
+            --red-light: #fef2f2;
+            --green: #10b981;
+            --green-light: #ecfdf5;
+            --amber: #f59e0b;
+            --amber-light: #fffbeb;
+            --white: #ffffff;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+            --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+            --radius: 8px;
+            --radius-lg: 12px;
+        }
 
-.container{max-width:800px;margin:0 auto;padding:24px 16px}
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            line-height: 1.6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
 
-.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
-.card-title{font-size:13px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+        /* ── Header ── */
+        .header {
+            background: var(--white);
+            border-bottom: 3px solid var(--teal);
+            padding: 0 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
 
-.settings-panel{display:none;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
-.settings-panel.open{display:block}
+        .header-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
 
-label{display:block;font-size:12px;font-weight:500;color:var(--gray);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
-input[type="text"],input[type="password"],input[type="date"],select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--navy);outline:none;transition:border .15s}
-input:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,151,178,0.1)}
-select{appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center}
+        .header-logo {
+            width: 36px;
+            height: 36px;
+            background: var(--teal);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--white);
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: -0.5px;
+        }
 
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
-.form-group{margin-bottom:16px}
-.form-hint{font-size:11px;color:var(--gray);margin-top:4px}
+        .header-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
 
-.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;border:none}
-.btn-primary{background:var(--teal);color:var(--white)}
-.btn-primary:hover{background:var(--teal-dark)}
-.btn-primary:disabled{background:#94d3df;cursor:not-allowed}
-.btn-secondary{background:var(--white);color:var(--gray);border:1px solid var(--border)}
-.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
-.btn-success{background:var(--success);color:var(--white)}
-.btn-sm{padding:7px 14px;font-size:12px}
+        .header-title span {
+            color: var(--teal);
+            font-weight: 400;
+        }
 
-.upload-area{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:12px}
-.upload-area:hover{border-color:var(--teal);background:var(--teal-light)}
-.upload-area input{display:none}
-.upload-area p{font-size:13px;color:var(--gray)}
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-.progress-section{display:none;text-align:center;padding:40px 20px}
-.progress-section.active{display:block}
-.progress-bar-wrap{width:100%;height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin:16px 0}
-.progress-bar-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .4s ease;width:0%}
-.progress-pct{font-size:13px;color:var(--gray)}
-.progress-msg{font-size:14px;font-weight:500;color:var(--dark);margin-bottom:8px}
-.spinner{display:inline-block;width:20px;height:20px;border:2.5px solid var(--teal-mid);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
-@keyframes spin{to{transform:rotate(360deg)}}
+        .btn-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--gray-500);
+            transition: all 0.2s;
+            font-size: 1.2rem;
+        }
 
-.result-section{display:none;text-align:center;padding:40px 20px}
-.result-section.active{display:block}
-.result-icon{font-size:48px;margin-bottom:12px}
-.result-title{font-size:18px;font-weight:600;color:var(--dark);margin-bottom:6px}
-.result-sub{font-size:13px;color:var(--gray);margin-bottom:24px}
+        .btn-icon:hover {
+            background: var(--gray-100);
+            color: var(--teal);
+        }
 
-.status-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);padding:8px 32px;display:flex;gap:24px;font-size:11px;color:var(--gray);z-index:100}
-.status-item{display:flex;align-items:center;gap:6px}
-.status-dot{width:7px;height:7px;border-radius:50%}
-.status-dot.green{background:var(--success)}
-.status-dot.red{background:var(--danger)}
-.status-dot.yellow{background:#d69e2e}
+        .btn-icon.active {
+            background: var(--teal-light);
+            color: var(--teal);
+        }
 
-.asana-steps{background:var(--teal-light);border-radius:8px;padding:16px;margin-top:12px;font-size:12px;line-height:1.8;color:var(--navy);display:none}
-.asana-steps.open{display:block}
-.asana-link{color:var(--teal);cursor:pointer;font-size:11px;text-decoration:underline}
+        /* ── Settings Panel ── */
+        .settings-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.3);
+            z-index: 200;
+            animation: fadeIn 0.2s;
+        }
 
-.error-msg{background:#fff5f5;border:1px solid #feb2b2;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:12px;display:none}
-.error-msg.show{display:block}
+        .settings-overlay.open {
+            display: block;
+        }
 
-.form-section{display:block}
-.form-section.hidden{display:none}
-</style>
+        .settings-panel {
+            position: fixed;
+            top: 0;
+            right: 0;
+            width: 420px;
+            max-width: 90vw;
+            height: 100vh;
+            background: var(--white);
+            box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+            z-index: 201;
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .settings-panel.open {
+            transform: translateX(0);
+        }
+
+        .settings-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .settings-header h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .settings-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+
+        .settings-section {
+            margin-bottom: 1.75rem;
+        }
+
+        .settings-section h3 {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--gray-500);
+            margin-bottom: 0.75rem;
+        }
+
+        .settings-footer {
+            padding: 1rem 1.5rem;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        /* ── Asana Setup Steps ── */
+        .asana-steps {
+            display: none;
+            background: var(--gray-50);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius);
+            padding: 1rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .asana-steps.open {
+            display: block;
+        }
+
+        .asana-steps ol {
+            padding-left: 1.25rem;
+        }
+
+        .asana-steps li {
+            margin-bottom: 0.4rem;
+            color: var(--gray-600);
+        }
+
+        .asana-steps .note {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--gray-200);
+            color: var(--gray-500);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        /* ── Form Elements ── */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 0.4rem;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 0.6rem 0.85rem;
+            border: 1.5px solid var(--gray-300);
+            border-radius: var(--radius);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            color: var(--gray-800);
+            background: var(--white);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+
+        .form-select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' fill='none' stroke-width='1.5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            border-color: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0, 151, 178, 0.15);
+        }
+
+        .form-input::placeholder {
+            color: var(--gray-400);
+        }
+
+        .form-hint {
+            font-size: 0.78rem;
+            color: var(--gray-400);
+            margin-top: 0.3rem;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .form-row .form-group {
+            flex: 1;
+        }
+
+        /* ── Buttons ── */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 0.65rem 1.5rem;
+            border: none;
+            border-radius: var(--radius);
+            font-family: 'Montserrat', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--teal);
+            color: var(--white);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-primary:hover {
+            background: var(--teal-dark);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-primary:disabled {
+            background: var(--gray-300);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-secondary {
+            background: var(--white);
+            color: var(--gray-700);
+            border: 1.5px solid var(--gray-300);
+        }
+
+        .btn-secondary:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--teal);
+            padding: 0.4rem 0.75rem;
+            font-size: 0.82rem;
+        }
+
+        .btn-ghost:hover {
+            background: var(--teal-light);
+        }
+
+        .btn-success {
+            background: var(--green);
+            color: var(--white);
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        .btn-full {
+            width: 100%;
+        }
+
+        /* ── Main Layout ── */
+        .main {
+            flex: 1;
+            padding: 2rem;
+            max-width: 720px;
+            margin: 0 auto;
+            width: 100%;
+            padding-bottom: 4rem;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .card-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--gray-100);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-header h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .card-body {
+            padding: 1.5rem;
+        }
+
+        /* ── Upload Area ── */
+        .upload-area {
+            border: 2px dashed var(--gray-300);
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 0.5rem;
+        }
+
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--teal);
+            background: var(--teal-light);
+        }
+
+        .upload-area-icon {
+            color: var(--gray-400);
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-area-text {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .upload-area-text strong {
+            color: var(--teal);
+        }
+
+        .upload-area-hint {
+            font-size: 0.78rem;
+            color: var(--gray-400);
+            margin-top: 0.3rem;
+        }
+
+        .upload-area input[type="file"] {
+            display: none;
+        }
+
+        .upload-success {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 0.75rem 1rem;
+            background: var(--green-light);
+            border: 1px solid #a7f3d0;
+            border-radius: var(--radius);
+            font-size: 0.85rem;
+            color: #065f46;
+            margin-top: 0.5rem;
+        }
+
+        .upload-success.show {
+            display: flex;
+        }
+
+        /* ── Progress Section ── */
+        .progress-section {
+            display: none;
+        }
+
+        .progress-section.show {
+            display: block;
+        }
+
+        .progress-bar-track {
+            width: 100%;
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--teal), #00c4e0);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.4s ease;
+        }
+
+        .progress-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2.5px solid var(--gray-200);
+            border-top-color: var(--teal);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .progress-message {
+            font-size: 0.9rem;
+            color: var(--gray-600);
+        }
+
+        .progress-pct {
+            margin-left: auto;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--teal);
+            flex-shrink: 0;
+        }
+
+        .progress-steps {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--gray-100);
+        }
+
+        .progress-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0.4rem 0;
+            font-size: 0.82rem;
+            color: var(--gray-400);
+        }
+
+        .progress-step.active {
+            color: var(--teal);
+            font-weight: 500;
+        }
+
+        .progress-step.done {
+            color: var(--green);
+        }
+
+        .progress-step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-300);
+            flex-shrink: 0;
+        }
+
+        .progress-step.active .progress-step-dot {
+            background: var(--teal);
+            box-shadow: 0 0 0 3px rgba(0, 151, 178, 0.2);
+        }
+
+        .progress-step.done .progress-step-dot {
+            background: var(--green);
+        }
+
+        /* ── Result Section ── */
+        .result-section {
+            display: none;
+        }
+
+        .result-section.show {
+            display: block;
+        }
+
+        .result-success {
+            text-align: center;
+            padding: 2rem 1rem;
+        }
+
+        .result-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--green-light);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            color: var(--green);
+        }
+
+        .result-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--gray-800);
+            margin-bottom: 0.4rem;
+        }
+
+        .result-subtitle {
+            font-size: 0.9rem;
+            color: var(--gray-500);
+            margin-bottom: 1.5rem;
+            word-break: break-all;
+        }
+
+        .result-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* ── Error State ── */
+        .error-section {
+            display: none;
+        }
+
+        .error-section.show {
+            display: block;
+        }
+
+        .error-box {
+            padding: 1rem 1.25rem;
+            background: var(--red-light);
+            border: 1px solid #fecaca;
+            border-radius: var(--radius);
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .error-icon {
+            color: var(--red);
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .error-text {
+            font-size: 0.88rem;
+            color: #991b1b;
+        }
+
+        .error-text strong {
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        /* ── Status Bar ── */
+        .status-bar {
+            background: var(--white);
+            border-top: 1px solid var(--gray-200);
+            padding: 0.6rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            font-size: 0.78rem;
+            color: var(--gray-500);
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--gray-300);
+            flex-shrink: 0;
+        }
+
+        .status-dot.connected {
+            background: var(--green);
+        }
+
+        .status-dot.warning {
+            background: var(--amber);
+        }
+
+        .status-dot.error {
+            background: var(--red);
+        }
+
+        /* ── Toast Notifications ── */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 1.5rem;
+            z-index: 300;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-lg);
+            padding: 0.85rem 1.25rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease;
+            max-width: 360px;
+        }
+
+        .toast.success {
+            border-left: 4px solid var(--green);
+        }
+
+        .toast.error {
+            border-left: 4px solid var(--red);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ── Link styles ── */
+        a.link {
+            color: var(--teal);
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        a.link:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 640px) {
+            .main {
+                padding: 1rem;
+                padding-bottom: 4rem;
+            }
+            .header {
+                padding: 0 1rem;
+            }
+            .status-bar {
+                padding: 0.6rem 1rem;
+                gap: 1rem;
+                flex-wrap: wrap;
+                justify-content: flex-start;
+            }
+            .form-row {
+                flex-direction: column;
+                gap: 0;
+            }
+            .result-actions {
+                flex-direction: column;
+            }
+            .settings-panel {
+                width: 100vw;
+                max-width: 100vw;
+            }
+        }
+    </style>
 </head>
 <body>
 
-<div class="header">
-  <div class="header-left">
-    <div class="header-dot"></div>
-    <div>
-      <div class="header-title">Active DMC &middot; Reporting Agent</div>
-      <div class="header-sub">Active Digital Marketing Communications</div>
-    </div>
-  </div>
-  <div class="header-right">
-    <span style="font-size:11px;color:var(--gray)">AI-powered Client Report Generator</span>
-    <button class="gear-btn" onclick="toggleSettings()">&#9881; Settings</button>
-  </div>
-</div>
-
-<div class="container">
-
-  <!-- Settings Panel -->
-  <div class="settings-panel" id="settingsPanel">
-    <div class="card-title">Configuration</div>
-    <div class="form-group">
-      <label>Anthropic API Key</label>
-      <input type="password" id="anthropicKey" placeholder="sk-ant-...">
-      <div class="form-hint">Required for AI-generated insights. Get one at console.anthropic.com</div>
-    </div>
-    <div class="form-group">
-      <label>Asana Personal Access Token</label>
-      <input type="password" id="asanaToken" placeholder="1/12345678...">
-      <div class="form-hint">
-        For fetching deliverables from Asana.
-        <span class="asana-link" onclick="toggleAsanaSteps()">How to get a token?</span>
-      </div>
-      <div class="asana-steps" id="asanaSteps">
-        <strong>Setup steps:</strong><br>
-        1. Go to <strong>https://app.asana.com/0/my-apps</strong><br>
-        2. Click <strong>+ Create new token</strong><br>
-        3. Name it "ADMC Report Agent"<br>
-        4. Copy the token (you won't see it again)<br>
-        5. Paste it above and click Save<br>
-        <em>The token gives read access to your Asana workspace.</em>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>Custom Tracker Path (optional)</label>
-      <input type="text" id="trackerPath" placeholder="C:\Users\...\ADMC_Coverage Tracker Consolidated 2026.xlsx">
-      <div class="form-hint">Override the default OneDrive path if needed</div>
-    </div>
-    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
-    <span id="settingsSaved" style="font-size:12px;color:var(--success);margin-left:12px;display:none">Saved!</span>
-  </div>
-
-  <!-- Error message -->
-  <div class="error-msg" id="errorMsg"></div>
-
-  <!-- Main Form -->
-  <div class="form-section" id="formSection">
-    <div class="card">
-      <div class="card-title">Client &amp; Period</div>
-      <div class="form-group">
-        <label>Select Client</label>
-        <select id="clientSelect">
-          <option value="">Loading clients...</option>
-        </select>
-      </div>
-      <div class="form-group" id="customClientGroup" style="display:none">
-        <label>Client Name</label>
-        <input type="text" id="customClient" placeholder="Enter client name">
-      </div>
-      <div class="form-row">
-        <div>
-          <label>Period From</label>
-          <input type="date" id="periodStart">
+    <!-- Header -->
+    <header class="header">
+        <div class="header-brand">
+            <div class="header-logo">A</div>
+            <h1 class="header-title">Active DMC <span>Reporting Agent</span></h1>
         </div>
-        <div>
-          <label>Period To</label>
-          <input type="date" id="periodEnd">
+        <div class="header-actions">
+            <button class="btn-icon" id="settingsToggle" title="Settings" aria-label="Settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            </button>
         </div>
-      </div>
-    </div>
+    </header>
 
-    <div class="card">
-      <div class="card-title">Coverage Tracker</div>
-      <div id="trackerStatus" style="font-size:13px;margin-bottom:12px;color:var(--gray)">
-        Checking tracker connection...
-      </div>
-      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="uploadTracker(this)">
-        <p><strong>Upload tracker manually</strong><br>Drop .xlsx file or click to browse</p>
-      </div>
-    </div>
+    <!-- Settings Overlay -->
+    <div class="settings-overlay" id="settingsOverlay"></div>
 
-    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px">
-      <button class="btn btn-primary" id="generateBtn" onclick="startGeneration()">
-        Generate Report
-      </button>
-    </div>
-  </div>
+    <!-- Settings Panel (slide-in from right) -->
+    <aside class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <h2>Settings</h2>
+            <button class="btn-icon" id="settingsClose" aria-label="Close settings">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <div class="settings-body">
+            <!-- Anthropic API Key -->
+            <div class="settings-section">
+                <h3>Anthropic API</h3>
+                <div class="form-group">
+                    <label class="form-label" for="settAnthropicKey">API Key</label>
+                    <input type="password" class="form-input" id="settAnthropicKey" placeholder="sk-ant-...">
+                    <p class="form-hint">Required for AI-generated insights. Get a key at console.anthropic.com</p>
+                </div>
+            </div>
+            <!-- Asana Token -->
+            <div class="settings-section">
+                <h3>Asana Integration</h3>
+                <div class="form-group">
+                    <label class="form-label" for="settAsanaToken">Personal Access Token</label>
+                    <input type="password" class="form-input" id="settAsanaToken" placeholder="1/12345678...">
+                    <p class="form-hint">
+                        Used to fetch deliverables from Asana.
+                        <a class="link" id="asanaHelpToggle">How to get a token?</a>
+                    </p>
+                    <div class="asana-steps" id="asanaSteps">
+                        <ol>
+                            <li>Go to <strong>https://app.asana.com/0/my-apps</strong></li>
+                            <li>Click <strong>+ Create new token</strong></li>
+                            <li>Give it a name like <strong>ADMC Report Agent</strong></li>
+                            <li>Copy the token (you will not see it again)</li>
+                            <li>Paste it in the field above</li>
+                            <li>The agent will search your workspace for matching client projects</li>
+                        </ol>
+                        <div class="note">The token gives read access to your Asana workspace. Store it securely.</div>
+                    </div>
+                </div>
+            </div>
+            <!-- Tracker Path -->
+            <div class="settings-section">
+                <h3>Coverage Tracker</h3>
+                <div class="form-group">
+                    <label class="form-label" for="settTrackerPath">Custom Tracker Path</label>
+                    <input type="text" class="form-input" id="settTrackerPath" placeholder="C:\path\to\tracker.xlsx">
+                    <p class="form-hint">Override the default OneDrive tracker path. Leave blank to use default.</p>
+                </div>
+            </div>
+        </div>
+        <div class="settings-footer">
+            <button class="btn btn-primary btn-full" id="saveSettingsBtn">Save Settings</button>
+        </div>
+    </aside>
 
-  <!-- Progress Section -->
-  <div class="progress-section" id="progressSection">
-    <div class="spinner"></div>
-    <div class="progress-msg" id="progressMsg">Initializing...</div>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" id="progressBar"></div>
-    </div>
-    <div class="progress-pct" id="progressPct">0%</div>
-    <div style="font-size:11px;color:var(--gray);margin-top:24px">
-      Building insights &middot; Analyzing coverage &middot; Crafting narrative
-    </div>
-  </div>
+    <!-- Main Content -->
+    <main class="main">
 
-  <!-- Result Section -->
-  <div class="result-section" id="resultSection">
-    <div class="result-icon">&#10004;</div>
-    <div class="result-title" id="resultTitle">Report Ready!</div>
-    <div class="result-sub" id="resultSub"></div>
-    <div style="display:flex;gap:12px;justify-content:center">
-      <a id="downloadLink" class="btn btn-success" href="#" download>Download Report</a>
-      <button class="btn btn-secondary" onclick="resetForm()">Generate Another</button>
-    </div>
-  </div>
+        <!-- Report Form Card -->
+        <div class="card" id="formCard">
+            <div class="card-header">
+                <h2>Generate Report</h2>
+                <span style="font-size:0.75rem;color:var(--gray-400);">AI-powered client report generator</span>
+            </div>
+            <div class="card-body">
+                <!-- Client Selection -->
+                <div class="form-group">
+                    <label class="form-label" for="clientSelect">Client</label>
+                    <select class="form-select" id="clientSelect">
+                        <option value="">Loading clients...</option>
+                    </select>
+                </div>
 
-</div>
+                <div class="form-group" id="manualClientGroup" style="display:none;">
+                    <label class="form-label" for="manualClientInput">Client Name</label>
+                    <input type="text" class="form-input" id="manualClientInput" placeholder="Enter client name manually">
+                </div>
 
-<!-- Status Bar -->
-<div class="status-bar">
-  <div class="status-item">
-    <div class="status-dot" id="trackerDot"></div>
-    <span id="trackerLabel">Tracker: checking...</span>
-  </div>
-  <div class="status-item">
-    <div class="status-dot" id="asanaDot"></div>
-    <span id="asanaLabel">Asana: checking...</span>
-  </div>
-  <div class="status-item">
-    <div class="status-dot" id="claudeDot"></div>
-    <span id="claudeLabel">Claude API: checking...</span>
-  </div>
-</div>
+                <!-- Date Range -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="periodStart">From</label>
+                        <input type="date" class="form-input" id="periodStart">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="periodEnd">To</label>
+                        <input type="date" class="form-input" id="periodEnd">
+                    </div>
+                </div>
 
-<script>
-let currentJobId = null;
-let pollInterval = null;
-let uploadedTrackerPath = null;
+                <!-- Upload Tracker -->
+                <div class="form-group" id="uploadGroup">
+                    <label class="form-label">Coverage Tracker</label>
+                    <div id="trackerStatusBanner" style="font-size:0.82rem;color:var(--gray-500);margin-bottom:0.5rem;display:none;"></div>
+                    <div class="upload-area" id="uploadArea">
+                        <input type="file" id="trackerFileInput" accept=".xlsx,.xls">
+                        <div class="upload-area-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        </div>
+                        <div class="upload-area-text"><strong>Click to upload</strong> or drag and drop</div>
+                        <div class="upload-area-hint">.xlsx or .xls consolidated tracker file</div>
+                    </div>
+                    <div class="upload-success" id="uploadSuccess">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span id="uploadSuccessText">Tracker uploaded successfully</span>
+                    </div>
+                </div>
 
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  loadConfig();
-  setDefaultDates();
-});
+                <!-- Generate Button -->
+                <button class="btn btn-primary btn-full" id="generateBtn" style="margin-top:0.5rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    Generate Report
+                </button>
+            </div>
+        </div>
 
-function setDefaultDates() {
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  document.getElementById('periodStart').value = firstDay.toISOString().split('T')[0];
-  document.getElementById('periodEnd').value = lastDay.toISOString().split('T')[0];
-}
+        <!-- Progress Card -->
+        <div class="card progress-section" id="progressSection">
+            <div class="card-header">
+                <h2>Generating Report</h2>
+            </div>
+            <div class="card-body">
+                <div class="progress-bar-track">
+                    <div class="progress-bar-fill" id="progressBarFill"></div>
+                </div>
+                <div class="progress-info">
+                    <div class="spinner" id="progressSpinner"></div>
+                    <span class="progress-message" id="progressMessage">Initializing...</span>
+                    <span class="progress-pct" id="progressPct">0%</span>
+                </div>
+                <div class="progress-steps">
+                    <div class="progress-step" id="step-tracker">
+                        <span class="progress-step-dot"></span>
+                        <span>Reading coverage tracker</span>
+                    </div>
+                    <div class="progress-step" id="step-asana">
+                        <span class="progress-step-dot"></span>
+                        <span>Fetching Asana deliverables</span>
+                    </div>
+                    <div class="progress-step" id="step-insights">
+                        <span class="progress-step-dot"></span>
+                        <span>Generating strategic insights</span>
+                    </div>
+                    <div class="progress-step" id="step-pptx">
+                        <span class="progress-step-dot"></span>
+                        <span>Building PowerPoint report</span>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-function loadConfig() {
-  fetch('/api/config')
-    .then(r => r.json())
-    .then(data => {
-      // Update status bar
-      const trackerDot = document.getElementById('trackerDot');
-      const trackerLabel = document.getElementById('trackerLabel');
-      if (data.tracker_found) {
-        trackerDot.className = 'status-dot green';
-        trackerLabel.textContent = 'Tracker: connected';
-        document.getElementById('trackerStatus').innerHTML =
-          '<span style="color:var(--success)">&#10003;</span> Tracker found: ' +
-          data.tracker_path.split(/[/\\]/).pop();
-      } else {
-        trackerDot.className = 'status-dot red';
-        trackerLabel.textContent = 'Tracker: not found';
-        document.getElementById('trackerStatus').innerHTML =
-          '<span style="color:var(--danger)">&#10007;</span> Tracker not found at default path. Upload manually or set path in Settings.';
-      }
+        <!-- Result Card -->
+        <div class="card result-section" id="resultSection">
+            <div class="card-body">
+                <div class="result-success">
+                    <div class="result-icon">
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </div>
+                    <div class="result-title">Report Generated Successfully</div>
+                    <div class="result-subtitle" id="resultFilename"></div>
+                    <div class="result-actions">
+                        <button class="btn btn-success" id="downloadBtn">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download .pptx
+                        </button>
+                        <button class="btn btn-secondary" id="generateAnotherBtn">
+                            Generate Another
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-      const asanaDot = document.getElementById('asanaDot');
-      const asanaLabel = document.getElementById('asanaLabel');
-      if (data.has_asana_token) {
-        asanaDot.className = 'status-dot green';
-        asanaLabel.textContent = 'Asana: connected';
-      } else {
-        asanaDot.className = 'status-dot yellow';
-        asanaLabel.textContent = 'Asana: no token';
-      }
+        <!-- Error Card -->
+        <div class="card error-section" id="errorSection">
+            <div class="card-body">
+                <div class="error-box">
+                    <span class="error-icon">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                    </span>
+                    <div class="error-text">
+                        <strong>Report Generation Failed</strong>
+                        <span id="errorMessage"></span>
+                    </div>
+                </div>
+                <div style="text-align:center;margin-top:1.25rem;">
+                    <button class="btn btn-secondary" id="retryBtn">Try Again</button>
+                </div>
+            </div>
+        </div>
 
-      const claudeDot = document.getElementById('claudeDot');
-      const claudeLabel = document.getElementById('claudeLabel');
-      if (data.has_anthropic_key) {
-        claudeDot.className = 'status-dot green';
-        claudeLabel.textContent = 'Claude API: ready';
-      } else {
-        claudeDot.className = 'status-dot red';
-        claudeLabel.textContent = 'Claude API: no key';
-      }
+    </main>
 
-      // Populate client dropdown
-      populateClients(data.clients);
-    })
-    .catch(() => {
-      document.getElementById('trackerDot').className = 'status-dot red';
-      document.getElementById('asanaDot').className = 'status-dot red';
-      document.getElementById('claudeDot').className = 'status-dot red';
-    });
-}
+    <!-- Status Bar -->
+    <footer class="status-bar">
+        <div class="status-item">
+            <span class="status-dot" id="statusTracker"></span>
+            <span id="statusTrackerText">Tracker: checking...</span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot" id="statusAsana"></span>
+            <span id="statusAsanaText">Asana: checking...</span>
+        </div>
+        <div class="status-item">
+            <span class="status-dot" id="statusClaude"></span>
+            <span id="statusClaudeText">Claude API: checking...</span>
+        </div>
+    </footer>
 
-function populateClients(clients) {
-  const sel = document.getElementById('clientSelect');
-  sel.innerHTML = '';
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-  if (clients && clients.length > 0) {
-    const opt0 = document.createElement('option');
-    opt0.value = '';
-    opt0.textContent = 'Select a client...';
-    sel.appendChild(opt0);
+    <!-- JavaScript -->
+    <script>
+    (function() {
+        'use strict';
 
-    clients.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c;
-      opt.textContent = c;
-      sel.appendChild(opt);
-    });
+        // ── State ──
+        var appConfig = {};
+        var currentJobId = null;
+        var pollInterval = null;
+        var uploadedTrackerPath = null;
 
-    const optCustom = document.createElement('option');
-    optCustom.value = '__custom__';
-    optCustom.textContent = 'Other / Enter manually';
-    sel.appendChild(optCustom);
-  } else {
-    const opt0 = document.createElement('option');
-    opt0.value = '__custom__';
-    opt0.textContent = 'Enter client name manually';
-    sel.appendChild(opt0);
-    document.getElementById('customClientGroup').style.display = 'block';
-  }
+        // ── DOM References ──
+        var settingsToggle = document.getElementById('settingsToggle');
+        var settingsOverlay = document.getElementById('settingsOverlay');
+        var settingsPanel = document.getElementById('settingsPanel');
+        var settingsClose = document.getElementById('settingsClose');
+        var saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        var settAnthropicKey = document.getElementById('settAnthropicKey');
+        var settAsanaToken = document.getElementById('settAsanaToken');
+        var settTrackerPath = document.getElementById('settTrackerPath');
+        var asanaHelpToggle = document.getElementById('asanaHelpToggle');
+        var asanaSteps = document.getElementById('asanaSteps');
 
-  sel.addEventListener('change', () => {
-    document.getElementById('customClientGroup').style.display =
-      sel.value === '__custom__' ? 'block' : 'none';
-  });
-}
+        var clientSelect = document.getElementById('clientSelect');
+        var manualClientGroup = document.getElementById('manualClientGroup');
+        var manualClientInput = document.getElementById('manualClientInput');
+        var periodStart = document.getElementById('periodStart');
+        var periodEnd = document.getElementById('periodEnd');
+        var generateBtn = document.getElementById('generateBtn');
+        var trackerStatusBanner = document.getElementById('trackerStatusBanner');
 
-function toggleSettings() {
-  document.getElementById('settingsPanel').classList.toggle('open');
-}
+        var uploadArea = document.getElementById('uploadArea');
+        var trackerFileInput = document.getElementById('trackerFileInput');
+        var uploadSuccess = document.getElementById('uploadSuccess');
+        var uploadSuccessText = document.getElementById('uploadSuccessText');
+        var uploadGroup = document.getElementById('uploadGroup');
 
-function toggleAsanaSteps() {
-  document.getElementById('asanaSteps').classList.toggle('open');
-}
+        var formCard = document.getElementById('formCard');
+        var progressSection = document.getElementById('progressSection');
+        var progressBarFill = document.getElementById('progressBarFill');
+        var progressMessage = document.getElementById('progressMessage');
+        var progressPct = document.getElementById('progressPct');
+        var progressSpinner = document.getElementById('progressSpinner');
 
-function saveSettings() {
-  const data = {
-    anthropic_key: document.getElementById('anthropicKey').value.trim(),
-    asana_token: document.getElementById('asanaToken').value.trim(),
-    tracker_path: document.getElementById('trackerPath').value.trim(),
-  };
+        var resultSection = document.getElementById('resultSection');
+        var resultFilename = document.getElementById('resultFilename');
+        var downloadBtn = document.getElementById('downloadBtn');
+        var generateAnotherBtn = document.getElementById('generateAnotherBtn');
 
-  fetch('/api/save-settings', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(data),
-  })
-  .then(r => r.json())
-  .then(() => {
-    const saved = document.getElementById('settingsSaved');
-    saved.style.display = 'inline';
-    setTimeout(() => saved.style.display = 'none', 2000);
-    loadConfig();
-  })
-  .catch(e => showError('Failed to save settings: ' + e.message));
-}
+        var errorSection = document.getElementById('errorSection');
+        var errorMessage = document.getElementById('errorMessage');
+        var retryBtn = document.getElementById('retryBtn');
 
-function uploadTracker(input) {
-  if (!input.files || !input.files[0]) return;
+        var statusTracker = document.getElementById('statusTracker');
+        var statusTrackerText = document.getElementById('statusTrackerText');
+        var statusAsana = document.getElementById('statusAsana');
+        var statusAsanaText = document.getElementById('statusAsanaText');
+        var statusClaude = document.getElementById('statusClaude');
+        var statusClaudeText = document.getElementById('statusClaudeText');
 
-  const formData = new FormData();
-  formData.append('file', input.files[0]);
+        var toastContainer = document.getElementById('toastContainer');
 
-  document.getElementById('trackerStatus').innerHTML = 'Uploading tracker...';
+        // ── Progress step elements ──
+        var stepTracker = document.getElementById('step-tracker');
+        var stepAsana = document.getElementById('step-asana');
+        var stepInsights = document.getElementById('step-insights');
+        var stepPptx = document.getElementById('step-pptx');
 
-  fetch('/api/upload-tracker', {method: 'POST', body: formData})
-    .then(r => r.json())
-    .then(data => {
-      if (data.error) {
-        showError(data.error);
-        return;
-      }
-      uploadedTrackerPath = data.tracker_path;
-      document.getElementById('trackerStatus').innerHTML =
-        '<span style="color:var(--success)">&#10003;</span> Uploaded: ' + input.files[0].name;
-      document.getElementById('trackerDot').className = 'status-dot green';
-      document.getElementById('trackerLabel').textContent = 'Tracker: uploaded';
-      populateClients(data.clients);
-    })
-    .catch(e => showError('Upload failed: ' + e.message));
-}
+        // ── Toast Helper ──
+        function showToast(message, type) {
+            type = type || 'success';
+            var toast = document.createElement('div');
+            toast.className = 'toast ' + type;
+            var iconSvg = type === 'success'
+                ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>'
+                : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            toast.innerHTML = iconSvg + '<span>' + escapeHtml(message) + '</span>';
+            toastContainer.appendChild(toast);
+            setTimeout(function() {
+                toast.style.transition = 'opacity 0.3s';
+                toast.style.opacity = '0';
+                setTimeout(function() { toast.remove(); }, 300);
+            }, 4000);
+        }
 
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 5000);
-}
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
 
-function startGeneration() {
-  const sel = document.getElementById('clientSelect');
-  let client = sel.value;
-  if (client === '__custom__') {
-    client = document.getElementById('customClient').value.trim();
-  }
-  if (!client) { showError('Please select or enter a client name.'); return; }
+        // ── Default Dates (current month) ──
+        function setDefaultDates() {
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = now.getMonth();
+            var firstDay = new Date(year, month, 1);
+            var lastDay = new Date(year, month + 1, 0);
+            periodStart.value = formatDateISO(firstDay);
+            periodEnd.value = formatDateISO(lastDay);
+        }
 
-  const periodStart = document.getElementById('periodStart').value;
-  const periodEnd = document.getElementById('periodEnd').value;
-  if (!periodStart) { showError('Please select a start date.'); return; }
+        function formatDateISO(d) {
+            var y = d.getFullYear();
+            var m = String(d.getMonth() + 1).padStart(2, '0');
+            var day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
 
-  // Format period nicely
-  const startDate = new Date(periodStart);
-  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-  let periodLabel = months[startDate.getMonth()] + ' ' + startDate.getFullYear();
-  if (periodEnd) {
-    const endDate = new Date(periodEnd);
-    if (endDate.getMonth() !== startDate.getMonth() || endDate.getFullYear() !== startDate.getFullYear()) {
-      periodLabel = months[startDate.getMonth()] + ' - ' + months[endDate.getMonth()] + ' ' + endDate.getFullYear();
-    }
-  }
+        // ── Settings Panel ──
+        function openSettings() {
+            settingsOverlay.classList.add('open');
+            settingsPanel.classList.add('open');
+            settingsToggle.classList.add('active');
+        }
 
-  const payload = {
-    client: client,
-    period_start: periodLabel,
-    period_end: '',
-    tracker_path: uploadedTrackerPath || '',
-  };
+        function closeSettings() {
+            settingsOverlay.classList.remove('open');
+            settingsPanel.classList.remove('open');
+            settingsToggle.classList.remove('active');
+        }
 
-  document.getElementById('formSection').classList.add('hidden');
-  document.getElementById('progressSection').classList.add('active');
+        settingsToggle.addEventListener('click', function() {
+            if (settingsPanel.classList.contains('open')) {
+                closeSettings();
+            } else {
+                openSettings();
+            }
+        });
 
-  fetch('/api/generate', {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify(payload),
-  })
-  .then(r => r.json())
-  .then(data => {
-    if (data.error) {
-      showError(data.error);
-      resetForm();
-      return;
-    }
-    currentJobId = data.job_id;
-    pollInterval = setInterval(pollStatus, 1000);
-  })
-  .catch(e => {
-    showError('Failed to start generation: ' + e.message);
-    resetForm();
-  });
-}
+        settingsOverlay.addEventListener('click', closeSettings);
+        settingsClose.addEventListener('click', closeSettings);
 
-function pollStatus() {
-  if (!currentJobId) return;
+        // Close settings on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && settingsPanel.classList.contains('open')) {
+                closeSettings();
+            }
+        });
 
-  fetch('/api/status/' + currentJobId)
-    .then(r => r.json())
-    .then(data => {
-      document.getElementById('progressMsg').textContent = data.message || '';
-      document.getElementById('progressBar').style.width = (data.progress || 0) + '%';
-      document.getElementById('progressPct').textContent = (data.progress || 0) + '%';
+        // Asana help toggle
+        asanaHelpToggle.addEventListener('click', function(e) {
+            e.preventDefault();
+            asanaSteps.classList.toggle('open');
+        });
 
-      if (data.status === 'complete') {
-        clearInterval(pollInterval);
-        pollInterval = null;
-        showResult(data);
-      } else if (data.status === 'error') {
-        clearInterval(pollInterval);
-        pollInterval = null;
-        showError(data.message);
-        resetForm();
-      }
-    })
-    .catch(() => {});
-}
+        // Save settings
+        saveSettingsBtn.addEventListener('click', function() {
+            var payload = {};
+            var ak = settAnthropicKey.value.trim();
+            var at = settAsanaToken.value.trim();
+            var tp = settTrackerPath.value.trim();
+            if (ak) payload.anthropic_key = ak;
+            if (at) payload.asana_token = at;
+            if (tp) payload.tracker_path = tp;
 
-function showResult(data) {
-  document.getElementById('progressSection').classList.remove('active');
-  document.getElementById('resultSection').classList.add('active');
-  document.getElementById('resultSub').textContent = data.filename || 'Report generated';
-  document.getElementById('downloadLink').href = '/api/download/' + encodeURIComponent(data.filename);
-  document.getElementById('downloadLink').download = data.filename;
-}
+            if (Object.keys(payload).length === 0) {
+                showToast('No changes to save', 'error');
+                return;
+            }
 
-function resetForm() {
-  currentJobId = null;
-  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
-  document.getElementById('formSection').classList.remove('hidden');
-  document.getElementById('progressSection').classList.remove('active');
-  document.getElementById('resultSection').classList.remove('active');
-  document.getElementById('progressBar').style.width = '0%';
-  document.getElementById('progressPct').textContent = '0%';
-}
-</script>
+            saveSettingsBtn.disabled = true;
+            saveSettingsBtn.textContent = 'Saving...';
+
+            fetch('/api/save-settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    showToast('Settings saved successfully');
+                    settAnthropicKey.value = '';
+                    settAsanaToken.value = '';
+                    closeSettings();
+                    loadConfig();
+                } else {
+                    showToast(data.error || 'Failed to save settings', 'error');
+                }
+            })
+            .catch(function(err) {
+                showToast('Network error: ' + err.message, 'error');
+            })
+            .finally(function() {
+                saveSettingsBtn.disabled = false;
+                saveSettingsBtn.textContent = 'Save Settings';
+            });
+        });
+
+        // ── Load Config ──
+        function loadConfig() {
+            fetch('/api/config')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                appConfig = data;
+                updateStatusBar(data);
+                populateClients(data.clients, data.tracker_found);
+                updateTrackerBanner(data);
+            })
+            .catch(function(err) {
+                console.error('Config load failed:', err);
+                updateStatusBar({});
+                populateClients([], false);
+            });
+        }
+
+        function updateStatusBar(cfg) {
+            // Tracker
+            if (cfg.tracker_found || uploadedTrackerPath) {
+                statusTracker.className = 'status-dot connected';
+                statusTrackerText.textContent = 'Tracker: connected';
+            } else {
+                statusTracker.className = 'status-dot warning';
+                statusTrackerText.textContent = 'Tracker: not found';
+            }
+            // Asana
+            if (cfg.has_asana_token) {
+                statusAsana.className = 'status-dot connected';
+                statusAsanaText.textContent = 'Asana: connected';
+            } else {
+                statusAsana.className = 'status-dot error';
+                statusAsanaText.textContent = 'Asana: no token';
+            }
+            // Claude
+            if (cfg.has_anthropic_key) {
+                statusClaude.className = 'status-dot connected';
+                statusClaudeText.textContent = 'Claude API: key set';
+            } else {
+                statusClaude.className = 'status-dot error';
+                statusClaudeText.textContent = 'Claude API: missing';
+            }
+        }
+
+        function updateTrackerBanner(cfg) {
+            if (cfg.tracker_found) {
+                var filename = cfg.tracker_path.split(/[/\\]/).pop();
+                trackerStatusBanner.innerHTML = '<span style="color:var(--green);">&#10003;</span> Tracker connected: <strong>' + escapeHtml(filename) + '</strong>';
+                trackerStatusBanner.style.display = 'block';
+            } else if (!uploadedTrackerPath) {
+                trackerStatusBanner.innerHTML = '<span style="color:var(--amber);">&#9888;</span> Default tracker not found. Upload manually or set the path in Settings.';
+                trackerStatusBanner.style.display = 'block';
+            }
+        }
+
+        function populateClients(clients, trackerFound) {
+            clientSelect.innerHTML = '';
+
+            if (clients && clients.length > 0) {
+                var optDefault = document.createElement('option');
+                optDefault.value = '';
+                optDefault.textContent = 'Select a client...';
+                clientSelect.appendChild(optDefault);
+
+                clients.forEach(function(c) {
+                    var o = document.createElement('option');
+                    o.value = c;
+                    o.textContent = c;
+                    clientSelect.appendChild(o);
+                });
+
+                // Add manual entry option
+                var optManual = document.createElement('option');
+                optManual.value = '__manual__';
+                optManual.textContent = 'Other / Enter manually...';
+                clientSelect.appendChild(optManual);
+
+                clientSelect.style.display = '';
+                manualClientGroup.style.display = 'none';
+            } else {
+                var optEmpty = document.createElement('option');
+                optEmpty.value = '__manual__';
+                optEmpty.textContent = trackerFound ? 'No sheets found in tracker' : 'No tracker loaded - enter client manually';
+                clientSelect.appendChild(optEmpty);
+                clientSelect.style.display = 'none';
+                manualClientGroup.style.display = '';
+            }
+        }
+
+        // Toggle manual input when "Other" is selected
+        clientSelect.addEventListener('change', function() {
+            if (clientSelect.value === '__manual__') {
+                manualClientGroup.style.display = '';
+                manualClientInput.focus();
+            } else {
+                manualClientGroup.style.display = 'none';
+            }
+        });
+
+        // ── File Upload ──
+        uploadArea.addEventListener('click', function() {
+            trackerFileInput.click();
+        });
+
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function() {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            var files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileUpload(files[0]);
+            }
+        });
+
+        trackerFileInput.addEventListener('change', function() {
+            if (trackerFileInput.files.length > 0) {
+                handleFileUpload(trackerFileInput.files[0]);
+            }
+        });
+
+        function handleFileUpload(file) {
+            if (!file.name.match(/\.xlsx?$/i)) {
+                showToast('Please upload an .xlsx or .xls file', 'error');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('file', file);
+
+            uploadArea.style.opacity = '0.5';
+            uploadArea.style.pointerEvents = 'none';
+
+            fetch('/api/upload-tracker', {
+                method: 'POST',
+                body: formData,
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    uploadedTrackerPath = data.tracker_path;
+                    uploadSuccess.classList.add('show');
+                    uploadSuccessText.textContent = 'Tracker uploaded: ' + file.name + ' (' + data.clients.length + ' client tab' + (data.clients.length !== 1 ? 's' : '') + ' found)';
+                    uploadArea.style.display = 'none';
+                    trackerStatusBanner.style.display = 'none';
+                    populateClients(data.clients, true);
+                    updateStatusBar(Object.assign({}, appConfig, { tracker_found: true }));
+                    showToast('Tracker uploaded successfully');
+                } else {
+                    showToast(data.error || 'Upload failed', 'error');
+                    uploadArea.style.opacity = '';
+                    uploadArea.style.pointerEvents = '';
+                }
+            })
+            .catch(function(err) {
+                showToast('Upload error: ' + err.message, 'error');
+                uploadArea.style.opacity = '';
+                uploadArea.style.pointerEvents = '';
+            });
+        }
+
+        // ── Generate Report ──
+        generateBtn.addEventListener('click', function() {
+            var client = '';
+            if (clientSelect.style.display !== 'none' && clientSelect.value && clientSelect.value !== '__manual__') {
+                client = clientSelect.value;
+            } else {
+                client = manualClientInput.value.trim();
+            }
+
+            var pStart = periodStart.value;
+            var pEnd = periodEnd.value;
+
+            if (!client) {
+                showToast('Please select or enter a client name', 'error');
+                return;
+            }
+            if (!pStart) {
+                showToast('Please select a start date', 'error');
+                return;
+            }
+
+            // Format dates as readable period labels
+            var months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+            var startDate = new Date(pStart);
+            var periodLabel = months[startDate.getMonth()] + ' ' + startDate.getFullYear();
+
+            if (pEnd) {
+                var endDate = new Date(pEnd);
+                if (endDate.getMonth() !== startDate.getMonth() || endDate.getFullYear() !== startDate.getFullYear()) {
+                    periodLabel = months[startDate.getMonth()] + ' ' + startDate.getFullYear() + ' - ' + months[endDate.getMonth()] + ' ' + endDate.getFullYear();
+                }
+            }
+
+            var payload = {
+                client: client,
+                period_start: periodLabel,
+                period_end: '',
+            };
+            if (uploadedTrackerPath) {
+                payload.tracker_path = uploadedTrackerPath;
+            }
+
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;"></span> Starting...';
+
+            fetch('/api/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    resetGenerateBtn();
+                    return;
+                }
+                currentJobId = data.job_id;
+                showProgressView();
+                startPolling();
+            })
+            .catch(function(err) {
+                showToast('Request failed: ' + err.message, 'error');
+                resetGenerateBtn();
+            });
+        });
+
+        function resetGenerateBtn() {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg> Generate Report';
+        }
+
+        // ── View Transitions ──
+        function showFormView() {
+            formCard.style.display = '';
+            progressSection.classList.remove('show');
+            resultSection.classList.remove('show');
+            errorSection.classList.remove('show');
+            resetGenerateBtn();
+            resetProgressSteps();
+        }
+
+        function showProgressView() {
+            formCard.style.display = 'none';
+            progressSection.classList.add('show');
+            resultSection.classList.remove('show');
+            errorSection.classList.remove('show');
+            progressBarFill.style.width = '0%';
+            progressMessage.textContent = 'Initializing...';
+            progressPct.textContent = '0%';
+            progressSpinner.style.display = '';
+            resetProgressSteps();
+        }
+
+        function showResultView(filename) {
+            formCard.style.display = 'none';
+            progressSection.classList.remove('show');
+            resultSection.classList.add('show');
+            errorSection.classList.remove('show');
+            resultFilename.textContent = filename;
+        }
+
+        function showErrorView(msg) {
+            formCard.style.display = 'none';
+            progressSection.classList.remove('show');
+            resultSection.classList.remove('show');
+            errorSection.classList.add('show');
+            errorMessage.textContent = msg;
+        }
+
+        // ── Progress Step Highlighting ──
+        function resetProgressSteps() {
+            var steps = [stepTracker, stepAsana, stepInsights, stepPptx];
+            steps.forEach(function(s) {
+                s.className = 'progress-step';
+            });
+        }
+
+        function updateProgressSteps(progress, message) {
+            var msg = (message || '').toLowerCase();
+
+            // Mark steps based on progress percentage and message content
+            if (progress >= 10) {
+                stepTracker.className = progress > 20 ? 'progress-step done' : 'progress-step active';
+            }
+            if (progress >= 25) {
+                stepAsana.className = progress > 35 ? 'progress-step done' : 'progress-step active';
+            }
+            if (progress >= 40) {
+                stepInsights.className = progress > 80 ? 'progress-step done' : 'progress-step active';
+            }
+            if (progress >= 85) {
+                stepPptx.className = progress >= 100 ? 'progress-step done' : 'progress-step active';
+            }
+
+            // Also check message keywords for finer control
+            if (msg.indexOf('tracker') !== -1 || msg.indexOf('coverage') !== -1) {
+                stepTracker.className = 'progress-step active';
+            }
+            if (msg.indexOf('asana') !== -1) {
+                stepTracker.className = 'progress-step done';
+                stepAsana.className = 'progress-step active';
+            }
+            if (msg.indexOf('insight') !== -1) {
+                stepTracker.className = 'progress-step done';
+                stepAsana.className = 'progress-step done';
+                stepInsights.className = 'progress-step active';
+            }
+            if (msg.indexOf('powerpoint') !== -1 || msg.indexOf('pptx') !== -1 || msg.indexOf('building') !== -1) {
+                stepTracker.className = 'progress-step done';
+                stepAsana.className = 'progress-step done';
+                stepInsights.className = 'progress-step done';
+                stepPptx.className = 'progress-step active';
+            }
+        }
+
+        // ── Polling ──
+        function startPolling() {
+            if (pollInterval) clearInterval(pollInterval);
+            pollInterval = setInterval(function() {
+                if (!currentJobId) return;
+                fetch('/api/status/' + encodeURIComponent(currentJobId))
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.error) {
+                        stopPolling();
+                        showErrorView(data.error);
+                        return;
+                    }
+
+                    var pct = data.progress || 0;
+                    progressBarFill.style.width = pct + '%';
+                    progressPct.textContent = pct + '%';
+                    progressMessage.textContent = data.message || '';
+                    updateProgressSteps(pct, data.message);
+
+                    if (data.status === 'complete') {
+                        stopPolling();
+                        // Brief delay to let the user see 100%
+                        setTimeout(function() {
+                            showResultView(data.filename);
+                        }, 500);
+                    } else if (data.status === 'error') {
+                        stopPolling();
+                        showErrorView(data.message || 'An unknown error occurred');
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Poll error:', err);
+                });
+            }, 1000);
+        }
+
+        function stopPolling() {
+            if (pollInterval) {
+                clearInterval(pollInterval);
+                pollInterval = null;
+            }
+        }
+
+        // ── Download ──
+        downloadBtn.addEventListener('click', function() {
+            var filename = resultFilename.textContent;
+            if (filename) {
+                window.location.href = '/api/download/' + encodeURIComponent(filename);
+            }
+        });
+
+        // ── Generate Another / Retry ──
+        generateAnotherBtn.addEventListener('click', function() {
+            currentJobId = null;
+            showFormView();
+        });
+
+        retryBtn.addEventListener('click', function() {
+            currentJobId = null;
+            showFormView();
+        });
+
+        // ── Initialize ──
+        setDefaultDates();
+        loadConfig();
+
+    })();
+    </script>
 </body>
 </html>

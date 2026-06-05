@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Active DMC · Reporting Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Montserrat',Arial,sans-serif;background:#f7f8fa;color:#1A2B4A;min-height:100vh}
+:root{--teal:#0097B2;--teal-dark:#007A91;--teal-light:#E8F7FA;--teal-mid:#B3E0EA;--navy:#1A2B4A;--dark:#0D1B2E;--gray:#6b7280;--gray-light:#f5f5f5;--border:#e2e5ea;--white:#fff;--danger:#e53e3e;--success:#38a169}
+
+.header{background:var(--white);border-bottom:3px solid var(--teal);padding:16px 32px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+.header-left{display:flex;align-items:center;gap:12px}
+.header-dot{width:12px;height:12px;border-radius:50%;background:var(--teal)}
+.header-title{font-size:17px;font-weight:600;color:var(--dark)}
+.header-sub{font-size:11px;color:var(--gray);font-style:italic}
+.header-right{display:flex;align-items:center;gap:12px}
+.gear-btn{background:none;border:1px solid var(--border);border-radius:8px;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--gray);display:flex;align-items:center;gap:6px;transition:all .15s}
+.gear-btn:hover{border-color:var(--teal);color:var(--teal)}
+
+.container{max-width:800px;margin:0 auto;padding:24px 16px}
+
+.card{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.04)}
+.card-title{font-size:13px;font-weight:600;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+
+.settings-panel{display:none;background:var(--white);border:1px solid var(--border);border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 4px 12px rgba(0,0,0,0.08)}
+.settings-panel.open{display:block}
+
+label{display:block;font-size:12px;font-weight:500;color:var(--gray);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+input[type="text"],input[type="password"],input[type="date"],select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--navy);outline:none;transition:border .15s}
+input:focus,select:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,151,178,0.1)}
+select{appearance:none;background:var(--white) url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%236b7280' fill='none' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 14px center}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.form-group{margin-bottom:16px}
+.form-hint{font-size:11px;color:var(--gray);margin-top:4px}
+
+.btn{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:500;font-family:inherit;cursor:pointer;transition:all .15s;border:none}
+.btn-primary{background:var(--teal);color:var(--white)}
+.btn-primary:hover{background:var(--teal-dark)}
+.btn-primary:disabled{background:#94d3df;cursor:not-allowed}
+.btn-secondary{background:var(--white);color:var(--gray);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--teal);color:var(--teal)}
+.btn-success{background:var(--success);color:var(--white)}
+.btn-sm{padding:7px 14px;font-size:12px}
+
+.upload-area{border:2px dashed var(--border);border-radius:8px;padding:20px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:12px}
+.upload-area:hover{border-color:var(--teal);background:var(--teal-light)}
+.upload-area input{display:none}
+.upload-area p{font-size:13px;color:var(--gray)}
+
+.progress-section{display:none;text-align:center;padding:40px 20px}
+.progress-section.active{display:block}
+.progress-bar-wrap{width:100%;height:6px;background:var(--gray-light);border-radius:3px;overflow:hidden;margin:16px 0}
+.progress-bar-fill{height:100%;background:var(--teal);border-radius:3px;transition:width .4s ease;width:0%}
+.progress-pct{font-size:13px;color:var(--gray)}
+.progress-msg{font-size:14px;font-weight:500;color:var(--dark);margin-bottom:8px}
+.spinner{display:inline-block;width:20px;height:20px;border:2.5px solid var(--teal-mid);border-top-color:var(--teal);border-radius:50%;animation:spin .7s linear infinite;margin-bottom:12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.result-section{display:none;text-align:center;padding:40px 20px}
+.result-section.active{display:block}
+.result-icon{font-size:48px;margin-bottom:12px}
+.result-title{font-size:18px;font-weight:600;color:var(--dark);margin-bottom:6px}
+.result-sub{font-size:13px;color:var(--gray);margin-bottom:24px}
+
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:var(--white);border-top:1px solid var(--border);padding:8px 32px;display:flex;gap:24px;font-size:11px;color:var(--gray);z-index:100}
+.status-item{display:flex;align-items:center;gap:6px}
+.status-dot{width:7px;height:7px;border-radius:50%}
+.status-dot.green{background:var(--success)}
+.status-dot.red{background:var(--danger)}
+.status-dot.yellow{background:#d69e2e}
+
+.asana-steps{background:var(--teal-light);border-radius:8px;padding:16px;margin-top:12px;font-size:12px;line-height:1.8;color:var(--navy);display:none}
+.asana-steps.open{display:block}
+.asana-link{color:var(--teal);cursor:pointer;font-size:11px;text-decoration:underline}
+
+.error-msg{background:#fff5f5;border:1px solid #feb2b2;border-radius:8px;padding:10px 14px;font-size:13px;color:var(--danger);margin-bottom:12px;display:none}
+.error-msg.show{display:block}
+
+.form-section{display:block}
+.form-section.hidden{display:none}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="header-dot"></div>
+    <div>
+      <div class="header-title">Active DMC &middot; Reporting Agent</div>
+      <div class="header-sub">Active Digital Marketing Communications</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span style="font-size:11px;color:var(--gray)">AI-powered Client Report Generator</span>
+    <button class="gear-btn" onclick="toggleSettings()">&#9881; Settings</button>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settingsPanel">
+    <div class="card-title">Configuration</div>
+    <div class="form-group">
+      <label>Anthropic API Key</label>
+      <input type="password" id="anthropicKey" placeholder="sk-ant-...">
+      <div class="form-hint">Required for AI-generated insights. Get one at console.anthropic.com</div>
+    </div>
+    <div class="form-group">
+      <label>Asana Personal Access Token</label>
+      <input type="password" id="asanaToken" placeholder="1/12345678...">
+      <div class="form-hint">
+        For fetching deliverables from Asana.
+        <span class="asana-link" onclick="toggleAsanaSteps()">How to get a token?</span>
+      </div>
+      <div class="asana-steps" id="asanaSteps">
+        <strong>Setup steps:</strong><br>
+        1. Go to <strong>https://app.asana.com/0/my-apps</strong><br>
+        2. Click <strong>+ Create new token</strong><br>
+        3. Name it "ADMC Report Agent"<br>
+        4. Copy the token (you won't see it again)<br>
+        5. Paste it above and click Save<br>
+        <em>The token gives read access to your Asana workspace.</em>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Custom Tracker Path (optional)</label>
+      <input type="text" id="trackerPath" placeholder="C:\Users\...\ADMC_Coverage Tracker Consolidated 2026.xlsx">
+      <div class="form-hint">Override the default OneDrive path if needed</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="saveSettings()">Save Settings</button>
+    <span id="settingsSaved" style="font-size:12px;color:var(--success);margin-left:12px;display:none">Saved!</span>
+  </div>
+
+  <!-- Error message -->
+  <div class="error-msg" id="errorMsg"></div>
+
+  <!-- Main Form -->
+  <div class="form-section" id="formSection">
+    <div class="card">
+      <div class="card-title">Client &amp; Period</div>
+      <div class="form-group">
+        <label>Select Client</label>
+        <select id="clientSelect">
+          <option value="">Loading clients...</option>
+        </select>
+      </div>
+      <div class="form-group" id="customClientGroup" style="display:none">
+        <label>Client Name</label>
+        <input type="text" id="customClient" placeholder="Enter client name">
+      </div>
+      <div class="form-row">
+        <div>
+          <label>Period From</label>
+          <input type="date" id="periodStart">
+        </div>
+        <div>
+          <label>Period To</label>
+          <input type="date" id="periodEnd">
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Coverage Tracker</div>
+      <div id="trackerStatus" style="font-size:13px;margin-bottom:12px;color:var(--gray)">
+        Checking tracker connection...
+      </div>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="uploadTracker(this)">
+        <p><strong>Upload tracker manually</strong><br>Drop .xlsx file or click to browse</p>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:flex-end;gap:12px;margin-top:8px">
+      <button class="btn btn-primary" id="generateBtn" onclick="startGeneration()">
+        Generate Report
+      </button>
+    </div>
+  </div>
+
+  <!-- Progress Section -->
+  <div class="progress-section" id="progressSection">
+    <div class="spinner"></div>
+    <div class="progress-msg" id="progressMsg">Initializing...</div>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressBar"></div>
+    </div>
+    <div class="progress-pct" id="progressPct">0%</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:24px">
+      Building insights &middot; Analyzing coverage &middot; Crafting narrative
+    </div>
+  </div>
+
+  <!-- Result Section -->
+  <div class="result-section" id="resultSection">
+    <div class="result-icon">&#10004;</div>
+    <div class="result-title" id="resultTitle">Report Ready!</div>
+    <div class="result-sub" id="resultSub"></div>
+    <div style="display:flex;gap:12px;justify-content:center">
+      <a id="downloadLink" class="btn btn-success" href="#" download>Download Report</a>
+      <button class="btn btn-secondary" onclick="resetForm()">Generate Another</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Status Bar -->
+<div class="status-bar">
+  <div class="status-item">
+    <div class="status-dot" id="trackerDot"></div>
+    <span id="trackerLabel">Tracker: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="asanaDot"></div>
+    <span id="asanaLabel">Asana: checking...</span>
+  </div>
+  <div class="status-item">
+    <div class="status-dot" id="claudeDot"></div>
+    <span id="claudeLabel">Claude API: checking...</span>
+  </div>
+</div>
+
+<script>
+let currentJobId = null;
+let pollInterval = null;
+let uploadedTrackerPath = null;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  loadConfig();
+  setDefaultDates();
+});
+
+function setDefaultDates() {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  document.getElementById('periodStart').value = firstDay.toISOString().split('T')[0];
+  document.getElementById('periodEnd').value = lastDay.toISOString().split('T')[0];
+}
+
+function loadConfig() {
+  fetch('/api/config')
+    .then(r => r.json())
+    .then(data => {
+      // Update status bar
+      const trackerDot = document.getElementById('trackerDot');
+      const trackerLabel = document.getElementById('trackerLabel');
+      if (data.tracker_found) {
+        trackerDot.className = 'status-dot green';
+        trackerLabel.textContent = 'Tracker: connected';
+        document.getElementById('trackerStatus').innerHTML =
+          '<span style="color:var(--success)">&#10003;</span> Tracker found: ' +
+          data.tracker_path.split(/[/\\]/).pop();
+      } else {
+        trackerDot.className = 'status-dot red';
+        trackerLabel.textContent = 'Tracker: not found';
+        document.getElementById('trackerStatus').innerHTML =
+          '<span style="color:var(--danger)">&#10007;</span> Tracker not found at default path. Upload manually or set path in Settings.';
+      }
+
+      const asanaDot = document.getElementById('asanaDot');
+      const asanaLabel = document.getElementById('asanaLabel');
+      if (data.has_asana_token) {
+        asanaDot.className = 'status-dot green';
+        asanaLabel.textContent = 'Asana: connected';
+      } else {
+        asanaDot.className = 'status-dot yellow';
+        asanaLabel.textContent = 'Asana: no token';
+      }
+
+      const claudeDot = document.getElementById('claudeDot');
+      const claudeLabel = document.getElementById('claudeLabel');
+      if (data.has_anthropic_key) {
+        claudeDot.className = 'status-dot green';
+        claudeLabel.textContent = 'Claude API: ready';
+      } else {
+        claudeDot.className = 'status-dot red';
+        claudeLabel.textContent = 'Claude API: no key';
+      }
+
+      // Populate client dropdown
+      populateClients(data.clients);
+    })
+    .catch(() => {
+      document.getElementById('trackerDot').className = 'status-dot red';
+      document.getElementById('asanaDot').className = 'status-dot red';
+      document.getElementById('claudeDot').className = 'status-dot red';
+    });
+}
+
+function populateClients(clients) {
+  const sel = document.getElementById('clientSelect');
+  sel.innerHTML = '';
+
+  if (clients && clients.length > 0) {
+    const opt0 = document.createElement('option');
+    opt0.value = '';
+    opt0.textContent = 'Select a client...';
+    sel.appendChild(opt0);
+
+    clients.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c;
+      opt.textContent = c;
+      sel.appendChild(opt);
+    });
+
+    const optCustom = document.createElement('option');
+    optCustom.value = '__custom__';
+    optCustom.textContent = 'Other / Enter manually';
+    sel.appendChild(optCustom);
+  } else {
+    const opt0 = document.createElement('option');
+    opt0.value = '__custom__';
+    opt0.textContent = 'Enter client name manually';
+    sel.appendChild(opt0);
+    document.getElementById('customClientGroup').style.display = 'block';
+  }
+
+  sel.addEventListener('change', () => {
+    document.getElementById('customClientGroup').style.display =
+      sel.value === '__custom__' ? 'block' : 'none';
+  });
+}
+
+function toggleSettings() {
+  document.getElementById('settingsPanel').classList.toggle('open');
+}
+
+function toggleAsanaSteps() {
+  document.getElementById('asanaSteps').classList.toggle('open');
+}
+
+function saveSettings() {
+  const data = {
+    anthropic_key: document.getElementById('anthropicKey').value.trim(),
+    asana_token: document.getElementById('asanaToken').value.trim(),
+    tracker_path: document.getElementById('trackerPath').value.trim(),
+  };
+
+  fetch('/api/save-settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(data),
+  })
+  .then(r => r.json())
+  .then(() => {
+    const saved = document.getElementById('settingsSaved');
+    saved.style.display = 'inline';
+    setTimeout(() => saved.style.display = 'none', 2000);
+    loadConfig();
+  })
+  .catch(e => showError('Failed to save settings: ' + e.message));
+}
+
+function uploadTracker(input) {
+  if (!input.files || !input.files[0]) return;
+
+  const formData = new FormData();
+  formData.append('file', input.files[0]);
+
+  document.getElementById('trackerStatus').innerHTML = 'Uploading tracker...';
+
+  fetch('/api/upload-tracker', {method: 'POST', body: formData})
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        showError(data.error);
+        return;
+      }
+      uploadedTrackerPath = data.tracker_path;
+      document.getElementById('trackerStatus').innerHTML =
+        '<span style="color:var(--success)">&#10003;</span> Uploaded: ' + input.files[0].name;
+      document.getElementById('trackerDot').className = 'status-dot green';
+      document.getElementById('trackerLabel').textContent = 'Tracker: uploaded';
+      populateClients(data.clients);
+    })
+    .catch(e => showError('Upload failed: ' + e.message));
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 5000);
+}
+
+function startGeneration() {
+  const sel = document.getElementById('clientSelect');
+  let client = sel.value;
+  if (client === '__custom__') {
+    client = document.getElementById('customClient').value.trim();
+  }
+  if (!client) { showError('Please select or enter a client name.'); return; }
+
+  const periodStart = document.getElementById('periodStart').value;
+  const periodEnd = document.getElementById('periodEnd').value;
+  if (!periodStart) { showError('Please select a start date.'); return; }
+
+  // Format period nicely
+  const startDate = new Date(periodStart);
+  const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  let periodLabel = months[startDate.getMonth()] + ' ' + startDate.getFullYear();
+  if (periodEnd) {
+    const endDate = new Date(periodEnd);
+    if (endDate.getMonth() !== startDate.getMonth() || endDate.getFullYear() !== startDate.getFullYear()) {
+      periodLabel = months[startDate.getMonth()] + ' - ' + months[endDate.getMonth()] + ' ' + endDate.getFullYear();
+    }
+  }
+
+  const payload = {
+    client: client,
+    period_start: periodLabel,
+    period_end: '',
+    tracker_path: uploadedTrackerPath || '',
+  };
+
+  document.getElementById('formSection').classList.add('hidden');
+  document.getElementById('progressSection').classList.add('active');
+
+  fetch('/api/generate', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) {
+      showError(data.error);
+      resetForm();
+      return;
+    }
+    currentJobId = data.job_id;
+    pollInterval = setInterval(pollStatus, 1000);
+  })
+  .catch(e => {
+    showError('Failed to start generation: ' + e.message);
+    resetForm();
+  });
+}
+
+function pollStatus() {
+  if (!currentJobId) return;
+
+  fetch('/api/status/' + currentJobId)
+    .then(r => r.json())
+    .then(data => {
+      document.getElementById('progressMsg').textContent = data.message || '';
+      document.getElementById('progressBar').style.width = (data.progress || 0) + '%';
+      document.getElementById('progressPct').textContent = (data.progress || 0) + '%';
+
+      if (data.status === 'complete') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        showResult(data);
+      } else if (data.status === 'error') {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        showError(data.message);
+        resetForm();
+      }
+    })
+    .catch(() => {});
+}
+
+function showResult(data) {
+  document.getElementById('progressSection').classList.remove('active');
+  document.getElementById('resultSection').classList.add('active');
+  document.getElementById('resultSub').textContent = data.filename || 'Report generated';
+  document.getElementById('downloadLink').href = '/api/download/' + encodeURIComponent(data.filename);
+  document.getElementById('downloadLink').download = data.filename;
+}
+
+function resetForm() {
+  currentJobId = null;
+  if (pollInterval) { clearInterval(pollInterval); pollInterval = null; }
+  document.getElementById('formSection').classList.remove('hidden');
+  document.getElementById('progressSection').classList.remove('active');
+  document.getElementById('resultSection').classList.remove('active');
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressPct').textContent = '0%';
+}
+</script>
+</body>
+</html>

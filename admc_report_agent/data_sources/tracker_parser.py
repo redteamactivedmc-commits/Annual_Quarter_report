@@ -1,17 +1,14 @@
 import openpyxl
+import warnings
 from collections import Counter
 from .deduplicator import normalise_name
 
-def parse_tracker(file_path: str) -> dict:
-    """
-    Parse ADMC_clients_{Client}_tracker.xlsx
-    Expected columns: S N, Date, Publication, Headline, Media Type, Language,
-                      Spokesperson, Source, Reach, Tier, Print/Online, For PIV
-    Returns a dict with summary stats and raw rows.
-    """
-    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-    ws = wb.active
 
+def _parse_worksheet(ws) -> dict:
+    """
+    Parse a single worksheet and return summary stats and raw rows.
+    This is the shared logic used by both parse_tracker and parse_tracker_sheet.
+    """
     rows_data = []
     headers = []
     header_map = {}
@@ -51,8 +48,6 @@ def parse_tracker(file_path: str) -> dict:
             if idx < len(row):
                 entry[field] = row[idx]
         rows_data.append(entry)
-
-    wb.close()
 
     # Compute summary statistics
     total_placements = len(rows_data)
@@ -140,3 +135,50 @@ def parse_tracker(file_path: str) -> dict:
         "source_breakdown": dict(sources),
         "rows": rows_data,
     }
+
+
+def parse_tracker(file_path: str) -> dict:
+    """
+    Parse ADMC_clients_{Client}_tracker.xlsx
+    Expected columns: S N, Date, Publication, Headline, Media Type, Language,
+                      Spokesperson, Source, Reach, Tier, Print/Online, For PIV
+    Returns a dict with summary stats and raw rows.
+    """
+    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+    ws = wb.active
+    result = _parse_worksheet(ws)
+    wb.close()
+    return result
+
+
+def parse_tracker_sheet(file_path: str, client_name: str) -> dict:
+    """
+    Parse a specific client's tab from a consolidated Excel workbook.
+
+    Opens the workbook and finds the sheet/tab whose name matches
+    *client_name* (case-insensitive, partial match). If no match is
+    found, falls back to the first/active sheet with a warning.
+
+    Returns the same dict structure as parse_tracker().
+    """
+    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+
+    # Try to find a matching sheet (case-insensitive, partial match)
+    target_ws = None
+    client_lower = client_name.lower()
+
+    for sheet_name in wb.sheetnames:
+        if client_lower in sheet_name.lower():
+            target_ws = wb[sheet_name]
+            break
+
+    if target_ws is None:
+        warnings.warn(
+            f"No sheet matching '{client_name}' found in {file_path}. "
+            f"Available sheets: {wb.sheetnames}. Falling back to the active sheet."
+        )
+        target_ws = wb.active
+
+    result = _parse_worksheet(target_ws)
+    wb.close()
+    return result

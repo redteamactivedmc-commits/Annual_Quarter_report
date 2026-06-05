@@ -18,7 +18,21 @@ if _THIS_DIR not in sys.path:
 from flask import Flask, render_template, request, jsonify, send_file, session
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(_THIS_DIR, ".env"))
+# Load .env from multiple possible locations
+_ENV_LOCATIONS = [
+    os.path.join(_THIS_DIR, ".env"),
+    os.path.join(_THIS_DIR, "env.txt"),
+    os.path.join(_THIS_DIR, "..", ".env"),
+    os.path.join(_THIS_DIR, "..", "env.txt"),
+    os.path.expanduser(r"~\Annual_Quarter_report\Annual_Quarter_report\env.txt"),
+    os.path.expanduser(r"~\Annual_Quarter_report\Annual_Quarter_report\.env"),
+]
+for _env_path in _ENV_LOCATIONS:
+    if os.path.exists(_env_path):
+        load_dotenv(_env_path)
+        break
+else:
+    load_dotenv()
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)

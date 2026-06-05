@@ -5,13 +5,20 @@ import os
 import sys
 import json
 import threading
+import webbrowser
 from pathlib import Path
 from datetime import datetime
+
+# Ensure the package root is on sys.path so internal imports work
+# whether you run `python app.py` or `python -m admc_report_agent.app`
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
 
 from flask import Flask, render_template, request, jsonify, send_file, session
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(os.path.join(_THIS_DIR, ".env"))
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
@@ -22,15 +29,15 @@ DEFAULT_TRACKER_PATH = r"C:\Users\LeaKhoury–Active\OneDrive - ACTIVE FZ LLC\Ac
 # Also check a Linux-friendly path for when running on non-Windows
 FALLBACK_TRACKER_PATHS = [
     os.path.expanduser("~/OneDrive/ActiveDMC-DC - SHARED DATA/CLIENT CAMPAIGNS/Active DMC/Reporting/Coverage Tracking/2026/ADMC_Coverage Tracker Consolidated 2026.xlsx"),
-    os.path.join(os.path.dirname(__file__), "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
+    os.path.join(_THIS_DIR, "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
 ]
 
 # Report output directory
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), "reports")
+REPORTS_DIR = os.path.join(_THIS_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # Upload directory for manual tracker uploads
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+UPLOAD_DIR = os.path.join(_THIS_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 generation_status = {}
@@ -110,7 +117,7 @@ def upload_tracker():
 def save_settings():
     """Save API keys to .env file."""
     data = request.json
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    env_path = os.path.join(_THIS_DIR, ".env")
 
     env_vars = {}
     if os.path.exists(env_path):
@@ -302,6 +309,10 @@ def asana_setup():
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    url = f"http://localhost:{port}"
     print(f"\n  ADMC Reporting Agent")
-    print(f"  Open http://localhost:{port} in your browser\n")
+    print(f"  Opening {url} in your browser...\n")
+    print(f"  (Keep this window open while using the app)")
+    print(f"  (Press Ctrl+C to stop)\n")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     app.run(host="0.0.0.0", port=port, debug=debug)

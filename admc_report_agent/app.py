@@ -20,6 +20,26 @@ if _THIS_DIR not in sys.path:
 from flask import Flask, render_template, request, jsonify, send_file, session
 from dotenv import load_dotenv
 
+
+def _load_env_safe(filepath):
+    """Load an env file, handling Windows encoding (cp1252) gracefully."""
+    try:
+        load_dotenv(filepath)
+    except Exception:
+        # Fallback: read the file manually with tolerant encoding
+        try:
+            with open(filepath, "r", encoding="utf-8-sig") as f:
+                content = f.read()
+        except UnicodeDecodeError:
+            with open(filepath, "r", encoding="cp1252") as f:
+                content = f.read()
+        for line in content.splitlines():
+            line = line.strip()
+            if line and "=" in line and not line.startswith("#"):
+                key, val = line.split("=", 1)
+                os.environ[key.strip()] = val.strip()
+
+
 # Load .env from multiple possible locations
 _ENV_LOCATIONS = [
     os.path.join(_THIS_DIR, ".env"),
@@ -29,7 +49,7 @@ _ENV_LOCATIONS = [
 ]
 for _env_path in _ENV_LOCATIONS:
     if os.path.exists(_env_path):
-        load_dotenv(_env_path)
+        _load_env_safe(_env_path)
         break
 else:
     load_dotenv()

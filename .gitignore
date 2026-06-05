@@ -205,3 +205,7 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ADMC Report Agent generated files
+admc_report_agent/reports/*.pptx
+admc_report_agent/uploads/

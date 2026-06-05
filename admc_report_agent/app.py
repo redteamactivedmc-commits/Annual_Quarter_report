@@ -24,8 +24,6 @@ _ENV_LOCATIONS = [
     os.path.join(_THIS_DIR, "env.txt"),
     os.path.join(_THIS_DIR, "..", ".env"),
     os.path.join(_THIS_DIR, "..", "env.txt"),
-    os.path.expanduser(r"~\Annual_Quarter_report\Annual_Quarter_report\env.txt"),
-    os.path.expanduser(r"~\Annual_Quarter_report\Annual_Quarter_report\.env"),
 ]
 for _env_path in _ENV_LOCATIONS:
     if os.path.exists(_env_path):
@@ -37,13 +35,12 @@ else:
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
 
-# Default tracker path (Windows OneDrive)
-DEFAULT_TRACKER_PATH = r"C:\Users\LeaKhoury–Active\OneDrive - ACTIVE FZ LLC\ActiveDMC-DC - SHARED DATA\CLIENT CAMPAIGNS\Active DMC\Reporting\Coverage Tracking\2026\ADMC_Coverage Tracker Consolidated 2026.xlsx"
-
-# Also check a Linux-friendly path for when running on non-Windows
+# Tracker path is loaded from env var or settings panel — never hardcoded.
+# Set ADMC_TRACKER_PATH in your .env / env.txt file, or use the app's
+# settings panel to configure it. The app also checks these local fallbacks:
 FALLBACK_TRACKER_PATHS = [
-    os.path.expanduser("~/OneDrive/ActiveDMC-DC - SHARED DATA/CLIENT CAMPAIGNS/Active DMC/Reporting/Coverage Tracking/2026/ADMC_Coverage Tracker Consolidated 2026.xlsx"),
     os.path.join(_THIS_DIR, "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
+    os.path.join(_THIS_DIR, "..", "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
 ]
 
 # Report output directory
@@ -58,11 +55,12 @@ generation_status = {}
 
 
 def find_tracker_path():
-    """Find the tracker file from known paths."""
-    paths = [DEFAULT_TRACKER_PATH] + FALLBACK_TRACKER_PATHS
+    """Find the tracker file from env var, settings, or local fallbacks."""
     custom = os.getenv("ADMC_TRACKER_PATH")
+    paths = []
     if custom:
-        paths.insert(0, custom)
+        paths.append(custom)
+    paths.extend(FALLBACK_TRACKER_PATHS)
     for p in paths:
         if os.path.exists(p):
             return p

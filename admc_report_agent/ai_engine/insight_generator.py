@@ -277,13 +277,29 @@ Return ONLY a JSON object matching this structure (no markdown, no preamble):
 
 Be specific to the data provided — never generic."""
 
-    response = client_api.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1500,
-        system=INSIGHT_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    models_to_try = [
+        "claude-sonnet-4-6",
+        "claude-haiku-4-5",
+    ]
+    response = None
+    last_error = None
+    for model_id in models_to_try:
+        try:
+            response = client_api.messages.create(
+                model=model_id,
+                max_tokens=1500,
+                system=INSIGHT_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except anthropic.NotFoundError:
+            last_error = f"Model {model_id} not available"
+            continue
+    if response is None:
+        raise RuntimeError(last_error or "No Claude model available")
 
+    if not response.content:
+        raise RuntimeError("Empty response from Claude API")
     raw = response.content[0].text.strip()
     # Strip markdown code fences if present
     if raw.startswith("```"):
@@ -338,8 +354,14 @@ def generate_all_insights(
 
     if deliverables_data:
         base_context["deliverables"] = [
-            {"type": d["type"], "name": d["name"], "planned": d["planned"], "delivered": d["delivered"]}
+            {
+                "type": d.get("type", "other"),
+                "name": d.get("name", ""),
+                "planned": d.get("planned", 0),
+                "delivered": d.get("delivered", 0),
+            }
             for d in deliverables_data
+            if isinstance(d, dict)
         ]
 
     results = {}

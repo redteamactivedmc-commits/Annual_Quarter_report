@@ -89,7 +89,7 @@ def _parse_worksheet(ws) -> dict:
         reach_val = r.get("reach")
         if reach_val and str(reach_val).strip().lower() not in ("n/a", "na", "-", "", "none", "pending"):
             try:
-                total_reach += int(str(reach_val).replace(",", "").strip())
+                total_reach += int(float(str(reach_val).replace(",", "").strip()))
                 reach_available += 1
             except (ValueError, TypeError):
                 pass
@@ -110,8 +110,8 @@ def _parse_worksheet(ws) -> dict:
 
     english_count = sum(v for k, v in languages.items() if k.lower().startswith("eng"))
     arabic_count = sum(v for k, v in languages.items() if k.lower().startswith("arab"))
-    tier1_count = sum(v for k, v in tiers.items() if "1" in str(k))
-    tier2_count = sum(v for k, v in tiers.items() if "2" in str(k))
+    tier1_count = sum(v for k, v in tiers.items() if str(k).strip().lower() in ("1", "tier 1", "tier1", "t1"))
+    tier2_count = sum(v for k, v in tiers.items() if str(k).strip().lower() in ("2", "tier 2", "tier2", "t2"))
 
     top_publications = publications.most_common(5)
 
@@ -145,9 +145,11 @@ def parse_tracker(file_path: str) -> dict:
     Returns a dict with summary stats and raw rows.
     """
     wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-    ws = wb.active
-    result = _parse_worksheet(ws)
-    wb.close()
+    try:
+        ws = wb.active
+        result = _parse_worksheet(ws)
+    finally:
+        wb.close()
     return result
 
 
@@ -162,23 +164,23 @@ def parse_tracker_sheet(file_path: str, client_name: str) -> dict:
     Returns the same dict structure as parse_tracker().
     """
     wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+    try:
+        target_ws = None
+        client_lower = client_name.lower()
 
-    # Try to find a matching sheet (case-insensitive, partial match)
-    target_ws = None
-    client_lower = client_name.lower()
+        for sheet_name in wb.sheetnames:
+            if client_lower in sheet_name.lower():
+                target_ws = wb[sheet_name]
+                break
 
-    for sheet_name in wb.sheetnames:
-        if client_lower in sheet_name.lower():
-            target_ws = wb[sheet_name]
-            break
+        if target_ws is None:
+            warnings.warn(
+                f"No sheet matching '{client_name}' found in {file_path}. "
+                f"Available sheets: {wb.sheetnames}. Falling back to the active sheet."
+            )
+            target_ws = wb.active
 
-    if target_ws is None:
-        warnings.warn(
-            f"No sheet matching '{client_name}' found in {file_path}. "
-            f"Available sheets: {wb.sheetnames}. Falling back to the active sheet."
-        )
-        target_ws = wb.active
-
-    result = _parse_worksheet(target_ws)
-    wb.close()
+        result = _parse_worksheet(target_ws)
+    finally:
+        wb.close()
     return result

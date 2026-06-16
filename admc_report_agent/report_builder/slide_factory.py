@@ -84,6 +84,7 @@ def add_bullet_list(slide, items, left, top, width, height,
 
 
 def add_footer(slide, client_name):
+    client_name = client_name or "client"
     add_text_box(slide, "www.activedmc.com",
                  0.3, SLIDE_H - 0.4, 3, 0.3,
                  font_size=9, color="999999")
@@ -153,6 +154,23 @@ def load_logo(client_name, assets_dir=None):
             ext_lower = os.path.splitext(fname)[1].lower()
             if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
                 return os.path.join(clients_dir, fname)
+
+    # Check assets/clients/ directory as fallback
+    assets_clients = os.path.join(_PKG_DIR, "assets", "clients")
+    if os.path.isdir(assets_clients):
+        for name in variants:
+            for ext in extensions:
+                path = os.path.join(assets_clients, name + ext)
+                if os.path.exists(path):
+                    return path
+        if client_lower:
+            for fname in os.listdir(assets_clients):
+                if fname.startswith("."):
+                    continue
+                stem = os.path.splitext(fname)[0].lower()
+                ext_lower = os.path.splitext(fname)[1].lower()
+                if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
+                    return os.path.join(assets_clients, fname)
 
     # Legacy fallback
     if assets_dir:
@@ -312,7 +330,7 @@ def build_kpi_slide(prs, blank, client, tracker_data, insights):
         (str(tracker_data.get("total_placements", 0)), "Total Placements"),
         (str(tracker_data.get("unique_pr_campaigns", 0)), "PR Campaigns"),
         (str(tracker_data.get("tier1_count", 0)), "Tier 1 Placements"),
-        (f"{tracker_data.get('total_reach', 0):,}", "Total Reach"),
+        (f"{int(tracker_data.get('total_reach', 0) or 0):,}", "Total Reach"),
     ]
     for i, (value, label) in enumerate(metrics):
         left = 0.5 + i * 3.1
@@ -370,6 +388,7 @@ def build_deliverables_slide(prs, blank, client, deliverables):
                      font_size=14, color="888888")
         add_footer(slide, client)
         return
+    deliverables = deliverables[:10]
     rows_count = len(deliverables) + 1
     cols = 4
     col_widths = [1.8, 1.0, 1.0, 9.0]
@@ -400,9 +419,9 @@ def build_deliverables_slide(prs, blank, client, deliverables):
         if item.get("items"):
             titles_text = "; ".join(t.get("name", "") for t in item["items"][:3])
         row_data = [
-            item["type"].replace("_", " ").title(),
-            f"x{item['planned']}",
-            f"x{item['delivered']}",
+            item.get("type", "Other").replace("_", " ").title(),
+            f"x{item.get('planned', 0)}",
+            f"x{item.get('delivered', 0)}",
             titles_text[:100],
         ]
         for j, val in enumerate(row_data):
@@ -591,6 +610,8 @@ def build_plan_slide(prs, blank, client, insights):
         months = insights.get("months", [])
     y = 1.7
     for m in months[:3]:
+        if not isinstance(m, dict):
+            continue
         month_label = m.get("month", "Month")
         add_text_box(slide, month_label, 0.5, y, 5.8, 0.3,
                      font_size=12, bold=True, color="0D1B2E")
@@ -662,6 +683,9 @@ def build_closing_slide(prs, blank, client):
 
 def build_report(client, period, tracker_data, deliverables, insights, output_path):
     """Build the complete ADMC branded PowerPoint report."""
+    tracker_data = tracker_data or {}
+    deliverables = deliverables or []
+    insights = insights or {}
     prs = Presentation()
     prs.slide_width = Inches(SLIDE_W)
     prs.slide_height = Inches(SLIDE_H)

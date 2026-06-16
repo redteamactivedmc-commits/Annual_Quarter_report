@@ -3,6 +3,10 @@
 
 import os
 import sys
+
+# Prevent Flask and python-dotenv from auto-loading .env (crashes on Windows cp1252)
+os.environ["FLASK_SKIP_DOTENV"] = "1"
+
 import json
 import threading
 import webbrowser
@@ -40,7 +44,8 @@ def _load_env_file(filepath):
         line = line.strip()
         if line and "=" in line and not line.startswith("#"):
             key, val = line.split("=", 1)
-            os.environ[key.strip()] = val.strip()
+            val = val.strip().strip("\"'"  )
+            os.environ[key.strip()] = val
 
 
 # Load .env from multiple possible locations
@@ -171,15 +176,21 @@ def save_settings():
                     key, val = line.split("=", 1)
                     env_vars[key.strip()] = val.strip()
 
+    def _sanitize(val):
+        return val.replace("\n", "").replace("\r", "").strip()
+
     if data.get("anthropic_key"):
-        env_vars["ANTHROPIC_API_KEY"] = data["anthropic_key"]
-        os.environ["ANTHROPIC_API_KEY"] = data["anthropic_key"]
+        val = _sanitize(data["anthropic_key"])
+        env_vars["ANTHROPIC_API_KEY"] = val
+        os.environ["ANTHROPIC_API_KEY"] = val
     if data.get("asana_token"):
-        env_vars["ASANA_PAT"] = data["asana_token"]
-        os.environ["ASANA_PAT"] = data["asana_token"]
+        val = _sanitize(data["asana_token"])
+        env_vars["ASANA_PAT"] = val
+        os.environ["ASANA_PAT"] = val
     if data.get("tracker_path"):
-        env_vars["ADMC_TRACKER_PATH"] = data["tracker_path"]
-        os.environ["ADMC_TRACKER_PATH"] = data["tracker_path"]
+        val = _sanitize(data["tracker_path"])
+        env_vars["ADMC_TRACKER_PATH"] = val
+        os.environ["ADMC_TRACKER_PATH"] = val
 
     with open(env_path, "w") as f:
         for key, val in env_vars.items():
@@ -300,8 +311,10 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     period_end=period_end_date,
                 )
                 deliverables = asana_data.get("deliverables", [])
+                if asana_data.get("error"):
+                    generation_status[job_id]["message"] = f"Asana warning: {asana_data['error']}"
             except Exception as e:
-                pass
+                generation_status[job_id]["message"] = f"Asana error: {e}"
 
         # Step 3: Generate insights
         generation_status[job_id] = {"status": "running", "progress": 40, "message": "Generating strategic insights..."}
@@ -329,7 +342,7 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     progress_callback=progress_cb,
                 )
             except Exception as e:
-                pass
+                generation_status[job_id]["message"] = f"AI warning: {e}"
 
         # Step 4: Build PPTX
         generation_status[job_id] = {"status": "running", "progress": 85, "message": "Building PowerPoint report..."}
@@ -377,10 +390,16 @@ def get_status(job_id):
 @app.route("/api/download/<filename>")
 def download_report(filename):
     """Download a generated report."""
-    filepath = os.path.join(REPORTS_DIR, filename)
+    from werkzeug.utils import secure_filename as _secure
+    safe_name = _secure(filename)
+    if not safe_name:
+        return jsonify({"error": "Invalid filename"}), 400
+    filepath = os.path.join(REPORTS_DIR, safe_name)
+    if not os.path.realpath(filepath).startswith(os.path.realpath(REPORTS_DIR)):
+        return jsonify({"error": "Invalid filename"}), 400
     if not os.path.exists(filepath):
         return jsonify({"error": "File not found"}), 404
-    return send_file(filepath, as_attachment=True, download_name=filename)
+    return send_file(filepath, as_attachment=True, download_name=safe_name)
 
 
 @app.route("/api/asana-setup")

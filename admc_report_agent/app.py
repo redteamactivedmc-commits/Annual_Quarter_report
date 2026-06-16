@@ -18,26 +18,29 @@ if _THIS_DIR not in sys.path:
     sys.path.insert(0, _THIS_DIR)
 
 from flask import Flask, render_template, request, jsonify, send_file, session
-from dotenv import load_dotenv
 
 
-def _load_env_safe(filepath):
-    """Load an env file, handling Windows encoding (cp1252) gracefully."""
-    try:
-        load_dotenv(filepath)
-    except Exception:
-        # Fallback: read the file manually with tolerant encoding
+def _load_env_file(filepath):
+    """Read a .env / env.txt file and set os.environ entries.
+
+    Handles Windows cp1252 encoding (e.g. en-dash in OneDrive paths)
+    without depending on python-dotenv which crashes on non-UTF-8 files.
+    """
+    content = None
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
         try:
-            with open(filepath, "r", encoding="utf-8-sig") as f:
+            with open(filepath, "r", encoding=enc) as f:
                 content = f.read()
-        except UnicodeDecodeError:
-            with open(filepath, "r", encoding="cp1252") as f:
-                content = f.read()
-        for line in content.splitlines():
-            line = line.strip()
-            if line and "=" in line and not line.startswith("#"):
-                key, val = line.split("=", 1)
-                os.environ[key.strip()] = val.strip()
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    if content is None:
+        return
+    for line in content.splitlines():
+        line = line.strip()
+        if line and "=" in line and not line.startswith("#"):
+            key, val = line.split("=", 1)
+            os.environ[key.strip()] = val.strip()
 
 
 # Load .env from multiple possible locations
@@ -49,13 +52,8 @@ _ENV_LOCATIONS = [
 ]
 for _env_path in _ENV_LOCATIONS:
     if os.path.exists(_env_path):
-        _load_env_safe(_env_path)
+        _load_env_file(_env_path)
         break
-else:
-    try:
-        load_dotenv()
-    except Exception:
-        pass
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
@@ -158,8 +156,16 @@ def save_settings():
 
     env_vars = {}
     if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
+        content = None
+        for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+            try:
+                with open(env_path, "r", encoding=enc) as f:
+                    content = f.read()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+        if content:
+            for line in content.splitlines():
                 line = line.strip()
                 if "=" in line and not line.startswith("#"):
                     key, val = line.split("=", 1)

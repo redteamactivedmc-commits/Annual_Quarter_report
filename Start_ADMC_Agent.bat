@@ -2,7 +2,7 @@
 title ADMC Reporting Agent
 echo.
 echo   =============================================
-echo        ADMC Reporting Agent
+echo        ADMC Reporting Agent - Starting...
 echo   =============================================
 echo.
 
@@ -28,16 +28,20 @@ if %errorlevel% neq 0 (
     echo.
 )
 
+echo   Pulling latest updates...
+git pull origin claude/compassionate-clarke-Cvw9C >nul 2>&1
+
 echo   Starting the app...
-echo   Your browser will open automatically.
 echo.
 echo   =============================================
-echo   If it doesn't open, go to:
+echo   Open your browser and go to:
+echo.
 echo       http://localhost:5000
+echo.
 echo   =============================================
 echo.
-echo   Keep this window open while using the app.
-echo   Press Ctrl+C to stop.
+echo   (Keep this window open while using the app)
+echo   (Press Ctrl+C to stop)
 echo.
 
 cd admc_report_agent

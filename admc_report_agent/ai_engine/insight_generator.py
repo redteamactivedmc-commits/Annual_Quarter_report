@@ -278,10 +278,8 @@ Return ONLY a JSON object matching this structure (no markdown, no preamble):
 Be specific to the data provided — never generic."""
 
     models_to_try = [
-        "claude-sonnet-4-6-20250610",
-        "claude-sonnet-4-5-20250514",
-        "claude-3-5-sonnet-20241022",
-        "claude-3-haiku-20240307",
+        "claude-sonnet-4-6",
+        "claude-haiku-4-5",
     ]
     response = None
     last_error = None

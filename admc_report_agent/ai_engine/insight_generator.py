@@ -298,6 +298,8 @@ Be specific to the data provided — never generic."""
     if response is None:
         raise RuntimeError(last_error or "No Claude model available")
 
+    if not response.content:
+        raise RuntimeError("Empty response from Claude API")
     raw = response.content[0].text.strip()
     # Strip markdown code fences if present
     if raw.startswith("```"):
@@ -352,8 +354,14 @@ def generate_all_insights(
 
     if deliverables_data:
         base_context["deliverables"] = [
-            {"type": d["type"], "name": d["name"], "planned": d["planned"], "delivered": d["delivered"]}
+            {
+                "type": d.get("type", "other"),
+                "name": d.get("name", ""),
+                "planned": d.get("planned", 0),
+                "delivered": d.get("delivered", 0),
+            }
             for d in deliverables_data
+            if isinstance(d, dict)
         ]
 
     results = {}

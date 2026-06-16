@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 
 DELIVERABLE_TYPE_KEYWORDS = {
-    "press_release": ["press release", "pr ", "media alert", "announcement", "news release"],
+    "press_release": ["press release", "media alert", "announcement", "news release"],
     "interview": ["interview", "briefing", "media brief", "journalist meet"],
     "byline": ["byline", "op-ed", "thought leadership article", "contributed article", "opinion", "contributed"],
     "event": ["event", "summit", "conference", "panel", "speaking", "webinar"],
@@ -52,9 +52,8 @@ def deduplicate(tasks: list) -> list:
         dtype = detect_type(task_name)
         norm = normalise_name(task_name)
 
-        if dtype == "other":
-            # Don't group "other" tasks — each is its own deliverable
-            key = f"other:{task.get('gid', norm)}"
+        if dtype == "other" or not norm:
+            key = f"_unique:{task.get('gid', id(task))}"
         else:
             key = dtype + ":" + norm
 

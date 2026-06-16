@@ -117,6 +117,8 @@ def fetch_asana_data(client_name: str, asana_token: str, period_start: str = Non
             "tasks": [],
             "deliverables": [],
             "total_tasks": 0,
+            "period_start": period_start,
+            "period_end": period_end,
             "error": f"Failed to fetch Asana workspaces: {e}",
         }
 
@@ -126,6 +128,8 @@ def fetch_asana_data(client_name: str, asana_token: str, period_start: str = Non
             "tasks": [],
             "deliverables": [],
             "total_tasks": 0,
+            "period_start": period_start,
+            "period_end": period_end,
             "error": "No Asana workspaces found. Check your token.",
         }
 
@@ -161,6 +165,8 @@ def fetch_asana_data(client_name: str, asana_token: str, period_start: str = Non
             "tasks": [],
             "deliverables": [],
             "total_tasks": 0,
+            "period_start": period_start,
+            "period_end": period_end,
             "error": (
                 f"No projects found matching '{client_name}' across "
                 f"{len(workspaces)} workspace(s). "

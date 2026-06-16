@@ -5,43 +5,85 @@ import os
 import sys
 import json
 import threading
+import webbrowser
 from pathlib import Path
 from datetime import datetime
+import calendar
+import re
+
+# Ensure the package root is on sys.path so internal imports work
+# whether you run `python app.py` or `python -m admc_report_agent.app`
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
 
 from flask import Flask, render_template, request, jsonify, send_file, session
-from dotenv import load_dotenv
 
-load_dotenv()
+
+def _load_env_file(filepath):
+    """Read a .env / env.txt file and set os.environ entries.
+
+    Handles Windows cp1252 encoding (e.g. en-dash in OneDrive paths)
+    without depending on python-dotenv which crashes on non-UTF-8 files.
+    """
+    content = None
+    for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+        try:
+            with open(filepath, "r", encoding=enc) as f:
+                content = f.read()
+            break
+        except (UnicodeDecodeError, UnicodeError):
+            continue
+    if content is None:
+        return
+    for line in content.splitlines():
+        line = line.strip()
+        if line and "=" in line and not line.startswith("#"):
+            key, val = line.split("=", 1)
+            os.environ[key.strip()] = val.strip()
+
+
+# Load .env from multiple possible locations
+_ENV_LOCATIONS = [
+    os.path.join(_THIS_DIR, ".env"),
+    os.path.join(_THIS_DIR, "env.txt"),
+    os.path.join(_THIS_DIR, "..", ".env"),
+    os.path.join(_THIS_DIR, "..", "env.txt"),
+]
+for _env_path in _ENV_LOCATIONS:
+    if os.path.exists(_env_path):
+        _load_env_file(_env_path)
+        break
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)
 
-# Default tracker path (Windows OneDrive)
-DEFAULT_TRACKER_PATH = r"C:\Users\LeaKhoury–Active\OneDrive - ACTIVE FZ LLC\ActiveDMC-DC - SHARED DATA\CLIENT CAMPAIGNS\Active DMC\Reporting\Coverage Tracking\2026\ADMC_Coverage Tracker Consolidated 2026.xlsx"
-
-# Also check a Linux-friendly path for when running on non-Windows
+# Tracker path is loaded from env var or settings panel — never hardcoded.
+# Set ADMC_TRACKER_PATH in your .env / env.txt file, or use the app's
+# settings panel to configure it. The app also checks these local fallbacks:
 FALLBACK_TRACKER_PATHS = [
-    os.path.expanduser("~/OneDrive/ActiveDMC-DC - SHARED DATA/CLIENT CAMPAIGNS/Active DMC/Reporting/Coverage Tracking/2026/ADMC_Coverage Tracker Consolidated 2026.xlsx"),
-    os.path.join(os.path.dirname(__file__), "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
+    os.path.join(_THIS_DIR, "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
+    os.path.join(_THIS_DIR, "..", "trackers", "ADMC_Coverage_Tracker_Consolidated_2026.xlsx"),
 ]
 
 # Report output directory
-REPORTS_DIR = os.path.join(os.path.dirname(__file__), "reports")
+REPORTS_DIR = os.path.join(_THIS_DIR, "reports")
 os.makedirs(REPORTS_DIR, exist_ok=True)
 
 # Upload directory for manual tracker uploads
-UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads")
+UPLOAD_DIR = os.path.join(_THIS_DIR, "uploads")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 generation_status = {}
 
 
 def find_tracker_path():
-    """Find the tracker file from known paths."""
-    paths = [DEFAULT_TRACKER_PATH] + FALLBACK_TRACKER_PATHS
+    """Find the tracker file from env var, settings, or local fallbacks."""
     custom = os.getenv("ADMC_TRACKER_PATH")
+    paths = []
     if custom:
-        paths.insert(0, custom)
+        paths.append(custom)
+    paths.extend(FALLBACK_TRACKER_PATHS)
     for p in paths:
         if os.path.exists(p):
             return p
@@ -110,12 +152,20 @@ def upload_tracker():
 def save_settings():
     """Save API keys to .env file."""
     data = request.json
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
+    env_path = os.path.join(_THIS_DIR, ".env")
 
     env_vars = {}
     if os.path.exists(env_path):
-        with open(env_path, "r") as f:
-            for line in f:
+        content = None
+        for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+            try:
+                with open(env_path, "r", encoding=enc) as f:
+                    content = f.read()
+                break
+            except (UnicodeDecodeError, UnicodeError):
+                continue
+        if content:
+            for line in content.splitlines():
                 line = line.strip()
                 if "=" in line and not line.startswith("#"):
                     key, val = line.split("=", 1)
@@ -175,6 +225,51 @@ def generate_report():
     return jsonify({"job_id": job_id})
 
 
+def _parse_period_dates(period):
+    """
+    Parse a period string like "2026-01 – 2026-03" into (start_date, end_date)
+    as YYYY-MM-DD strings.
+
+    Supports formats:
+        "2026-01 – 2026-03"  (YYYY-MM range)
+        "2026-01"            (single month)
+
+    Returns (period_start, period_end) as YYYY-MM-DD strings, or (None, None).
+    """
+    if not period:
+        return None, None
+
+    # Split on dash/en-dash/em-dash with optional spaces
+    parts = re.split(r'\s*[–—]\s*', period.strip())
+    # Fall back to splitting on regular hyphen only if it separates YYYY-MM tokens
+    if len(parts) == 1:
+        # Try splitting on " - " (space-hyphen-space) to avoid splitting YYYY-MM
+        parts = re.split(r'\s+-\s+', period.strip())
+    parts = [p.strip() for p in parts if p.strip()]
+
+    def month_str_to_dates(s):
+        """Convert 'YYYY-MM' or 'YYYY-MM-DD' to (first_day, last_day) strings."""
+        s = s.strip()
+        if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
+            return s, s
+        m = re.match(r'^(\d{4})-(\d{2})$', s)
+        if m:
+            year, month = int(m.group(1)), int(m.group(2))
+            last_day = calendar.monthrange(year, month)[1]
+            return f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{last_day:02d}"
+        return None, None
+
+    if len(parts) == 1:
+        start, end = month_str_to_dates(parts[0])
+        return start, end
+    elif len(parts) >= 2:
+        start, _ = month_str_to_dates(parts[0])
+        _, end = month_str_to_dates(parts[-1])
+        return start, end
+
+    return None, None
+
+
 def _run_generation(job_id, client_name, period, tracker_path):
     """Background report generation."""
     try:
@@ -195,10 +290,15 @@ def _run_generation(job_id, client_name, period, tracker_path):
 
         asana_token = os.getenv("ASANA_PAT")
         deliverables = []
+        period_start_date, period_end_date = _parse_period_dates(period)
         if asana_token:
             try:
                 from data_sources.asana_fetcher import fetch_asana_data
-                asana_data = fetch_asana_data(client_name, asana_token)
+                asana_data = fetch_asana_data(
+                    client_name, asana_token,
+                    period_start=period_start_date,
+                    period_end=period_end_date,
+                )
                 deliverables = asana_data.get("deliverables", [])
             except Exception as e:
                 pass
@@ -299,9 +399,38 @@ def asana_setup():
     })
 
 
+@app.route("/api/assets")
+def list_assets():
+    """List available logos and images in the input folder."""
+    input_dir = os.path.join(_THIS_DIR, "input")
+    if not os.path.isdir(input_dir):
+        alt = os.path.join(_THIS_DIR, "Inputs")
+        if os.path.isdir(alt):
+            input_dir = alt
+    assets = {"client_logos": [], "admc_logos": [], "images": []}
+
+    clients_dir = os.path.join(input_dir, "logos", "clients")
+    if os.path.exists(clients_dir):
+        assets["client_logos"] = [f for f in os.listdir(clients_dir) if not f.startswith(".")]
+
+    admc_dir = os.path.join(input_dir, "logos", "active_dmc")
+    if os.path.exists(admc_dir):
+        assets["admc_logos"] = [f for f in os.listdir(admc_dir) if not f.startswith(".")]
+
+    images_dir = os.path.join(input_dir, "images")
+    if os.path.exists(images_dir):
+        assets["images"] = [f for f in os.listdir(images_dir) if not f.startswith(".")]
+
+    return jsonify(assets)
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     debug = os.getenv("FLASK_DEBUG", "0") == "1"
+    url = f"http://localhost:{port}"
     print(f"\n  ADMC Reporting Agent")
-    print(f"  Open http://localhost:{port} in your browser\n")
+    print(f"  Opening {url} in your browser...\n")
+    print(f"  (Keep this window open while using the app)")
+    print(f"  (Press Ctrl+C to stop)\n")
+    threading.Timer(1.5, lambda: webbrowser.open(url)).start()
     app.run(host="0.0.0.0", port=port, debug=debug)

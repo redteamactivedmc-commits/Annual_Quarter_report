@@ -2,11 +2,11 @@
 title ADMC Reporting Agent
 echo.
 echo   =============================================
-echo   ADMC Reporting Agent - Starting...
+echo        ADMC Reporting Agent - Starting...
 echo   =============================================
 echo.
 
-cd /d "%~dp0admc_report_agent"
+cd /d "%~dp0"
 
 echo   Checking Python...
 python --version >nul 2>&1
@@ -19,6 +19,17 @@ if %errorlevel% neq 0 (
     pause
     exit /b
 )
+
+echo   Checking packages...
+python -c "import flask" >nul 2>&1
+if %errorlevel% neq 0 (
+    echo   First time setup - installing packages...
+    pip install flask python-pptx openpyxl anthropic requests python-dotenv rich Pillow
+    echo.
+)
+
+echo   Pulling latest updates...
+git pull origin claude/compassionate-clarke-Cvw9C >nul 2>&1
 
 echo   Starting the app...
 echo.
@@ -33,6 +44,7 @@ echo   (Keep this window open while using the app)
 echo   (Press Ctrl+C to stop)
 echo.
 
+cd admc_report_agent
 python app.py
 
 pause

@@ -287,7 +287,7 @@ Be specific to the data provided — never generic."""
         try:
             response = client_api.messages.create(
                 model=model_id,
-                max_tokens=1500,
+                max_tokens=4096,
                 system=INSIGHT_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )

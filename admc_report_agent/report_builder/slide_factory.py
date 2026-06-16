@@ -568,17 +568,21 @@ def build_recommendations_slide(prs, blank, client, insights):
     recs = []
     if isinstance(insights, dict):
         recs = insights.get("recommendations", [])
-    y = 1.2
-    for i, rec in enumerate(recs[:5], 1):
-        if isinstance(rec, dict):
-            title = rec.get("title", "")
-            desc = rec.get("description", "")
-            text = f"{i}. {title}: {desc}"
-        else:
-            text = f"{i}. {rec}"
-        add_text_box(slide, text, 0.5, y, 12, 0.8,
-                     font_size=12, color="1A2B4A")
-        y += 0.95
+    if recs:
+        y = 1.2
+        for i, rec in enumerate(recs[:5], 1):
+            if isinstance(rec, dict):
+                title = rec.get("title", "")
+                desc = rec.get("description", "")
+                text = f"{i}. {title}: {desc}"
+            else:
+                text = f"{i}. {rec}"
+            add_text_box(slide, text, 0.5, y, 12, 0.8,
+                         font_size=12, color="1A2B4A")
+            y += 0.95
+    else:
+        add_text_box(slide, "[Recommendations could not be generated — check API key]", 0.5, 2, 12, 1,
+                     font_size=14, color="888888")
     add_footer(slide, client)
 
 

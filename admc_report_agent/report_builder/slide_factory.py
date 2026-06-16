@@ -109,15 +109,24 @@ def load_logo(client_name, assets_dir=None):
     """Find a client logo image.
 
     Lookup order:
-      1. input/logos/clients/{ClientName}.{ext}   (exact)
-      2. input/logos/clients/{clientname}.{ext}    (lowercase)
-      3. input/logos/clients/{CLIENTNAME}.{ext}    (uppercase)
+      1. Exact name match: {ClientName}.{ext}
+      2. Case/separator variants: lowercase, uppercase, underscores, hyphens
+      3. Directory scan: any file whose name contains the client name (case-insensitive)
     Extensions tried: .png, .jpg, .jpeg, .webp
     Falls back to legacy assets_dir if provided.
     """
     clients_dir = os.path.join(_INPUT_DIR, "logos", "clients")
-    variants = [client_name, client_name.lower(), client_name.upper()]
     extensions = [".png", ".jpg", ".jpeg", ".webp"]
+
+    variants = [
+        client_name,
+        client_name.lower(),
+        client_name.upper(),
+        client_name.replace(" ", "_"),
+        client_name.replace(" ", "-"),
+        client_name.lower().replace(" ", "_"),
+        client_name.lower().replace(" ", "-"),
+    ]
 
     for name in variants:
         for ext in extensions:
@@ -125,11 +134,20 @@ def load_logo(client_name, assets_dir=None):
             if os.path.exists(path):
                 return path
 
+    # Scan directory for any file containing the client name
+    client_lower = client_name.lower().split()[0] if client_name.strip() else ""
+    if client_lower and os.path.isdir(clients_dir):
+        for fname in os.listdir(clients_dir):
+            if fname.startswith("."):
+                continue
+            stem = os.path.splitext(fname)[0].lower()
+            ext_lower = os.path.splitext(fname)[1].lower()
+            if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
+                return os.path.join(clients_dir, fname)
+
     # Legacy fallback
     if assets_dir:
-        legacy_variants = [client_name, client_name.lower(), client_name.upper(),
-                           client_name.replace(" ", "_"), client_name.replace(" ", "-")]
-        for name in legacy_variants:
+        for name in variants:
             for ext in extensions:
                 path = os.path.join(assets_dir, "clients", name + ext)
                 if os.path.exists(path):

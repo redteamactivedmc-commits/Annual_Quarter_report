@@ -4,7 +4,7 @@ from .deduplicator import deduplicate
 
 ASANA_BASE_URL = "https://app.asana.com/api/1.0"
 
-TASK_OPT_FIELDS = "name,completed,completed_at,due_on,notes,assignee.name"
+TASK_OPT_FIELDS = "name,completed,completed_at,due_on,created_at,notes,assignee.name,num_subtasks"
 
 
 def _parse_date(date_str):
@@ -21,19 +21,18 @@ def _task_in_period(task, period_start_date, period_end_date):
     """
     Return True if the task falls within the reporting period.
 
-    A task is included if its due_on OR completed_at date falls within
-    [period_start_date, period_end_date]. If the task has neither date,
-    it is included by default (better to over-include than miss work).
+    A task is included if its completed_at OR due_on date falls within
+    [period_start_date, period_end_date]. Tasks with no date at all are
+    excluded when a date range is specified, to avoid inflating counts.
     """
     due = _parse_date(task.get("due_on"))
     completed = _parse_date(task.get("completed_at"))
 
-    # Use the most relevant date: completed_at takes priority, then due_on
-    ref_date = completed or due
+    created = _parse_date(task.get("created_at"))
+    ref_date = completed or due or created
 
     if ref_date is None:
-        # No date info — include the task so we don't lose deliverables
-        return True
+        return False
 
     if period_start_date and ref_date < period_start_date:
         return False

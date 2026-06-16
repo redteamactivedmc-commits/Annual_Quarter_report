@@ -277,12 +277,28 @@ Return ONLY a JSON object matching this structure (no markdown, no preamble):
 
 Be specific to the data provided — never generic."""
 
-    response = client_api.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1500,
-        system=INSIGHT_SYSTEM_PROMPT,
-        messages=[{"role": "user", "content": user_prompt}],
-    )
+    models_to_try = [
+        "claude-sonnet-4-6-20250610",
+        "claude-sonnet-4-5-20250514",
+        "claude-3-5-sonnet-20241022",
+        "claude-3-haiku-20240307",
+    ]
+    response = None
+    last_error = None
+    for model_id in models_to_try:
+        try:
+            response = client_api.messages.create(
+                model=model_id,
+                max_tokens=1500,
+                system=INSIGHT_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_prompt}],
+            )
+            break
+        except anthropic.NotFoundError:
+            last_error = f"Model {model_id} not available"
+            continue
+    if response is None:
+        raise RuntimeError(last_error or "No Claude model available")
 
     raw = response.content[0].text.strip()
     # Strip markdown code fences if present

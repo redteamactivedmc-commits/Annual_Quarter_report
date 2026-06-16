@@ -304,8 +304,10 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     period_end=period_end_date,
                 )
                 deliverables = asana_data.get("deliverables", [])
+                if asana_data.get("error"):
+                    generation_status[job_id]["message"] = f"Asana warning: {asana_data['error']}"
             except Exception as e:
-                pass
+                generation_status[job_id]["message"] = f"Asana error: {e}"
 
         # Step 3: Generate insights
         generation_status[job_id] = {"status": "running", "progress": 40, "message": "Generating strategic insights..."}
@@ -333,7 +335,7 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     progress_callback=progress_cb,
                 )
             except Exception as e:
-                pass
+                generation_status[job_id]["message"] = f"AI warning: {e}"
 
         # Step 4: Build PPTX
         generation_status[job_id] = {"status": "running", "progress": 85, "message": "Building PowerPoint report..."}

@@ -3,6 +3,10 @@
 
 import os
 import sys
+
+# Prevent Flask and python-dotenv from auto-loading .env (crashes on Windows cp1252)
+os.environ["FLASK_SKIP_DOTENV"] = "1"
+
 import json
 import threading
 import webbrowser

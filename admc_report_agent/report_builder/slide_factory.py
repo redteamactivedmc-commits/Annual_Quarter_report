@@ -154,6 +154,23 @@ def load_logo(client_name, assets_dir=None):
             if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
                 return os.path.join(clients_dir, fname)
 
+    # Check assets/clients/ directory as fallback
+    assets_clients = os.path.join(_PKG_DIR, "assets", "clients")
+    if os.path.isdir(assets_clients):
+        for name in variants:
+            for ext in extensions:
+                path = os.path.join(assets_clients, name + ext)
+                if os.path.exists(path):
+                    return path
+        if client_lower:
+            for fname in os.listdir(assets_clients):
+                if fname.startswith("."):
+                    continue
+                stem = os.path.splitext(fname)[0].lower()
+                ext_lower = os.path.splitext(fname)[1].lower()
+                if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
+                    return os.path.join(assets_clients, fname)
+
     # Legacy fallback
     if assets_dir:
         for name in variants:

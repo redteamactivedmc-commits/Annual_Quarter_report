@@ -4,7 +4,7 @@ from .deduplicator import deduplicate
 
 ASANA_BASE_URL = "https://app.asana.com/api/1.0"
 
-TASK_OPT_FIELDS = "name,completed,completed_at,due_on,created_at,notes,assignee.name,num_subtasks"
+TASK_OPT_FIELDS = "name,completed,completed_at,due_on,created_at,notes,assignee.name,num_subtasks,resource_subtype"
 
 
 def _parse_date(date_str):
@@ -184,11 +184,35 @@ def fetch_asana_data(client_name: str, asana_token: str, period_start: str = Non
             continue
 
         for t in tasks:
+            # Skip sections and milestones — they are not real deliverables
+            subtype = t.get("resource_subtype", "default_task")
+            if subtype in ("section", "milestone"):
+                continue
+
             if t["gid"] not in seen_task_gids:
                 seen_task_gids.add(t["gid"])
-                # Tag the task with its source project for traceability
                 t["_source_project"] = proj["name"]
                 all_tasks.append(t)
+
+                # Fetch subtasks if present — deliverables may be nested
+                if t.get("num_subtasks", 0) > 0:
+                    try:
+                        subtasks = _get_all_pages(
+                            f"{ASANA_BASE_URL}/tasks/{t['gid']}/subtasks",
+                            headers,
+                            {"opt_fields": TASK_OPT_FIELDS, "limit": 100},
+                        )
+                        for st in subtasks:
+                            st_subtype = st.get("resource_subtype", "default_task")
+                            if st_subtype in ("section", "milestone"):
+                                continue
+                            if st["gid"] not in seen_task_gids:
+                                seen_task_gids.add(st["gid"])
+                                st["_source_project"] = proj["name"]
+                                st["_parent_task"] = t.get("name", "")
+                                all_tasks.append(st)
+                    except requests.RequestException:
+                        pass
 
     # --- Step 4: Filter by reporting period ---
     if period_start_date or period_end_date:

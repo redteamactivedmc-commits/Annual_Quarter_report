@@ -52,7 +52,10 @@ for _env_path in _ENV_LOCATIONS:
         _load_env_safe(_env_path)
         break
 else:
-    load_dotenv()
+    try:
+        load_dotenv()
+    except Exception:
+        pass
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.secret_key = os.urandom(24)

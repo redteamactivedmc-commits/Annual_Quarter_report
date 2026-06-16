@@ -10,7 +10,12 @@ import glob as _glob
 
 # Base directory for resolving input paths relative to the package
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# Support both "input" and "Inputs" folder names
 _INPUT_DIR = os.path.join(_PKG_DIR, "input")
+if not os.path.isdir(_INPUT_DIR):
+    _alt = os.path.join(_PKG_DIR, "Inputs")
+    if os.path.isdir(_alt):
+        _INPUT_DIR = _alt
 
 COLORS = {
     "teal_primary": "0097B2",
@@ -116,6 +121,10 @@ def load_logo(client_name, assets_dir=None):
     Falls back to legacy assets_dir if provided.
     """
     clients_dir = os.path.join(_INPUT_DIR, "logos", "clients")
+    if not os.path.isdir(clients_dir):
+        alt = os.path.join(_INPUT_DIR, "logos", "Clients")
+        if os.path.isdir(alt):
+            clients_dir = alt
     extensions = [".png", ".jpg", ".jpeg", ".webp"]
 
     variants = [
@@ -166,6 +175,12 @@ def load_admc_logo():
     Returns the path if found, else None.
     """
     admc_dir = os.path.join(_INPUT_DIR, "logos", "active_dmc")
+    if not os.path.isdir(admc_dir):
+        for alt_name in ["Active_DMC", "active_DMC", "ActiveDMC", "ACTIVE_DMC"]:
+            alt = os.path.join(_INPUT_DIR, "logos", alt_name)
+            if os.path.isdir(alt):
+                admc_dir = alt
+                break
 
     # Specific names first
     for candidate in ["active_dmc_logo.png", "logo.png"]:

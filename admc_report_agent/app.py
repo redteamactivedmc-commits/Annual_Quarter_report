@@ -394,6 +394,10 @@ def asana_setup():
 def list_assets():
     """List available logos and images in the input folder."""
     input_dir = os.path.join(_THIS_DIR, "input")
+    if not os.path.isdir(input_dir):
+        alt = os.path.join(_THIS_DIR, "Inputs")
+        if os.path.isdir(alt):
+            input_dir = alt
     assets = {"client_logos": [], "admc_logos": [], "images": []}
 
     clients_dir = os.path.join(input_dir, "logos", "clients")

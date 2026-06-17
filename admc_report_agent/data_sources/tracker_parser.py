@@ -1,10 +1,31 @@
 import openpyxl
 import warnings
+from datetime import datetime, date
 from collections import Counter
 from .deduplicator import normalise_name
 
 
-def _parse_worksheet(ws) -> dict:
+def _parse_date(val):
+    """Try to parse a cell value into a date object."""
+    if val is None:
+        return None
+    if isinstance(val, datetime):
+        return val.date()
+    if isinstance(val, date):
+        return val
+    s = str(val).strip()
+    if not s:
+        return None
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%d.%m.%Y",
+                "%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_worksheet(ws, period_start=None, period_end=None) -> dict:
     """
     Parse a single worksheet and return summary stats and raw rows.
     This is the shared logic used by both parse_tracker and parse_tracker_sheet.
@@ -48,6 +69,24 @@ def _parse_worksheet(ws) -> dict:
             if idx < len(row):
                 entry[field] = row[idx]
         rows_data.append(entry)
+
+    # Filter rows by reporting period if dates are provided
+    if period_start or period_end:
+        start_dt = _parse_date(period_start) if isinstance(period_start, str) else period_start
+        end_dt = _parse_date(period_end) if isinstance(period_end, str) else period_end
+        filtered = []
+        for r in rows_data:
+            row_date = _parse_date(r.get("date"))
+            if row_date is None:
+                filtered.append(r)
+                continue
+            if start_dt and row_date < start_dt:
+                continue
+            if end_dt and row_date > end_dt:
+                continue
+            filtered.append(r)
+        print(f"  [Tracker] Date filter: {len(rows_data)} rows -> {len(filtered)} rows in period {period_start} to {period_end}")
+        rows_data = filtered
 
     # Compute summary statistics
     total_placements = len(rows_data)
@@ -153,7 +192,7 @@ def parse_tracker(file_path: str) -> dict:
     return result
 
 
-def parse_tracker_sheet(file_path: str, client_name: str) -> dict:
+def parse_tracker_sheet(file_path: str, client_name: str, period_start=None, period_end=None) -> dict:
     """
     Parse a specific client's tab from a consolidated Excel workbook.
 
@@ -180,7 +219,7 @@ def parse_tracker_sheet(file_path: str, client_name: str) -> dict:
             )
             target_ws = wb.active
 
-        result = _parse_worksheet(target_ws)
+        result = _parse_worksheet(target_ws, period_start=period_start, period_end=period_end)
     finally:
         wb.close()
     return result

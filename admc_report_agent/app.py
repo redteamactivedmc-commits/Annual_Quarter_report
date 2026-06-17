@@ -156,16 +156,21 @@ def upload_tracker():
 @app.route("/api/save-settings", methods=["POST"])
 def save_settings():
     """Save API keys to .env file."""
-    data = request.json
+    data = request.json or {}
     env_path = os.path.join(_THIS_DIR, ".env")
+
+    print(f"\n[Settings] Saving to: {env_path}")
+    print(f"[Settings] Request data keys: {list(data.keys())}")
 
     env_vars = {}
     if os.path.exists(env_path):
+        print(f"[Settings] .env exists, reading...")
         content = None
         for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
             try:
                 with open(env_path, "r", encoding=enc) as f:
                     content = f.read()
+                print(f"[Settings] Read with encoding: {enc}")
                 break
             except (UnicodeDecodeError, UnicodeError):
                 continue
@@ -175,6 +180,9 @@ def save_settings():
                 if "=" in line and not line.startswith("#"):
                     key, val = line.split("=", 1)
                     env_vars[key.strip()] = val.strip()
+            print(f"[Settings] Loaded {len(env_vars)} existing variables")
+    else:
+        print(f"[Settings] .env does not exist, creating new")
 
     def _sanitize(val):
         return val.replace("\n", "").replace("\r", "").strip()
@@ -183,18 +191,28 @@ def save_settings():
         val = _sanitize(data["anthropic_key"])
         env_vars["ANTHROPIC_API_KEY"] = val
         os.environ["ANTHROPIC_API_KEY"] = val
+        print(f"[Settings] Set ANTHROPIC_API_KEY ({len(val)} chars)")
     if data.get("asana_token"):
         val = _sanitize(data["asana_token"])
         env_vars["ASANA_PAT"] = val
         os.environ["ASANA_PAT"] = val
+        print(f"[Settings] Set ASANA_PAT ({len(val)} chars, first 12: {val[:12]}...)")
     if data.get("tracker_path"):
         val = _sanitize(data["tracker_path"])
         env_vars["ADMC_TRACKER_PATH"] = val
         os.environ["ADMC_TRACKER_PATH"] = val
+        print(f"[Settings] Set ADMC_TRACKER_PATH")
 
-    with open(env_path, "w") as f:
-        for key, val in env_vars.items():
-            f.write(f"{key}={val}\n")
+    print(f"[Settings] Writing {len(env_vars)} variables to {env_path}")
+    try:
+        with open(env_path, "w") as f:
+            for key, val in env_vars.items():
+                f.write(f"{key}={val}\n")
+        print(f"[Settings] ✓ Wrote .env successfully")
+        print(f"[Settings] File now contains: {', '.join(env_vars.keys())}")
+    except Exception as e:
+        print(f"[Settings] ✗ FAILED to write .env: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
     return jsonify({"success": True})
 

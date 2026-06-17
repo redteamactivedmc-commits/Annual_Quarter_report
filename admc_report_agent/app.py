@@ -353,6 +353,10 @@ def _run_generation(job_id, client_name, period, tracker_path):
         print(f"  GENERATING REPORT: {client_name} | {period}")
         print(f"{'='*60}")
 
+        # Parse period dates early so both tracker and Asana can use them
+        period_start_date, period_end_date = _parse_period_dates(period)
+        print(f"  [Period] Parsed: {period_start_date} to {period_end_date}")
+
         # Step 1: Parse tracker
         generation_status[job_id] = {"status": "running", "progress": 10, "message": "Reading coverage tracker..."}
 
@@ -360,8 +364,12 @@ def _run_generation(job_id, client_name, period, tracker_path):
         if tracker_path and os.path.exists(tracker_path):
             try:
                 from data_sources.tracker_parser import parse_tracker_sheet
-                tracker_data = parse_tracker_sheet(tracker_path, client_name)
-                print(f"  [Tracker] Found {tracker_data.get('total_placements', 0)} placements")
+                tracker_data = parse_tracker_sheet(
+                    tracker_path, client_name,
+                    period_start=period_start_date,
+                    period_end=period_end_date,
+                )
+                print(f"  [Tracker] Found {tracker_data.get('total_placements', 0)} placements (after date filter)")
             except Exception as e:
                 warnings.append(f"Tracker: {e}")
                 print(f"  [Tracker] ERROR: {e}")
@@ -375,10 +383,8 @@ def _run_generation(job_id, client_name, period, tracker_path):
         asana_token = _get_asana_token()
         deliverables = []
         asana_note = None
-        period_start_date, period_end_date = _parse_period_dates(period)
         print(f"  [Asana] Token present: {bool(asana_token)}")
         print(f"  [Asana] Token first 8 chars: {asana_token[:8] + '...' if asana_token else 'NONE'}")
-        print(f"  [Asana] Period parsed: {period_start_date} to {period_end_date}")
         if asana_token:
             try:
                 from data_sources.asana_fetcher import fetch_asana_data

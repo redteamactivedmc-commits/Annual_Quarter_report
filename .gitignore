@@ -137,6 +137,8 @@ celerybeat.pid
 # Environments
 .env
 .envrc
+asana_token.txt
+admc_report_agent/asana_token.txt
 .venv
 env/
 venv/

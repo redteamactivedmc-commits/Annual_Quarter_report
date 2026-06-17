@@ -134,21 +134,43 @@ def fetch_asana_data(client_name: str, asana_token: str, period_start: str = Non
         }
 
     # --- Step 2: Search every workspace for matching projects ---
+    # Use the typeahead API which searches across ALL teams in an organization,
+    # unlike /workspaces/{id}/projects which only returns projects from teams
+    # the user explicitly belongs to.
     matching_projects = []
 
     for ws in workspaces:
         ws_gid = ws["gid"]
+
+        # Try typeahead search first (works across all teams)
         try:
-            projects = _get_all_pages(
-                f"{ASANA_BASE_URL}/workspaces/{ws_gid}/projects",
-                headers,
-                {"opt_fields": "name,gid,archived", "limit": 100},
+            typeahead_results = requests.get(
+                f"{ASANA_BASE_URL}/workspaces/{ws_gid}/typeahead",
+                headers=headers,
+                params={
+                    "resource_type": "project",
+                    "query": client_name,
+                    "count": 50,
+                    "opt_fields": "name,gid,archived",
+                },
+                timeout=30,
             )
-        except requests.RequestException:
-            continue
+            typeahead_results.raise_for_status()
+            projects = typeahead_results.json().get("data", [])
+            print(f"  [Asana] Typeahead search in workspace {ws_gid}: {len(projects)} results")
+        except requests.RequestException as e:
+            print(f"  [Asana] Typeahead failed ({e}), falling back to project listing")
+            # Fallback: list all projects (may miss projects in other teams)
+            try:
+                projects = _get_all_pages(
+                    f"{ASANA_BASE_URL}/workspaces/{ws_gid}/projects",
+                    headers,
+                    {"opt_fields": "name,gid,archived", "limit": 100},
+                )
+            except requests.RequestException:
+                continue
 
         for p in projects:
-            # Skip archived projects
             if p.get("archived"):
                 continue
             pname = p.get("name", "")

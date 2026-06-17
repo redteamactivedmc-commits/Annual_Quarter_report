@@ -258,8 +258,17 @@ def _parse_period_dates(period):
         parts = re.split(r'\s+-\s+', period.strip())
     parts = [p.strip() for p in parts if p.strip()]
 
+    MONTH_NAMES = {
+        "january": 1, "february": 2, "march": 3, "april": 4,
+        "may": 5, "june": 6, "july": 7, "august": 8,
+        "september": 9, "october": 10, "november": 11, "december": 12,
+        "jan": 1, "feb": 2, "mar": 3, "apr": 4,
+        "jun": 6, "jul": 7, "aug": 8, "sep": 9,
+        "oct": 10, "nov": 11, "dec": 12,
+    }
+
     def month_str_to_dates(s):
-        """Convert 'YYYY-MM' or 'YYYY-MM-DD' to (first_day, last_day) strings."""
+        """Convert various date formats to (first_day, last_day) strings."""
         s = s.strip()
         if re.match(r'^\d{4}-\d{2}-\d{2}$', s):
             return s, s
@@ -268,6 +277,14 @@ def _parse_period_dates(period):
             year, month = int(m.group(1)), int(m.group(2))
             last_day = calendar.monthrange(year, month)[1]
             return f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{last_day:02d}"
+        m = re.match(r'^(\w+)\s+(\d{4})$', s)
+        if m:
+            month_name = m.group(1).lower()
+            year = int(m.group(2))
+            month = MONTH_NAMES.get(month_name)
+            if month:
+                last_day = calendar.monthrange(year, month)[1]
+                return f"{year:04d}-{month:02d}-01", f"{year:04d}-{month:02d}-{last_day:02d}"
         return None, None
 
     if len(parts) == 1:
@@ -285,6 +302,9 @@ def _run_generation(job_id, client_name, period, tracker_path):
     """Background report generation."""
     try:
         warnings = []
+        print(f"\n{'='*60}")
+        print(f"  GENERATING REPORT: {client_name} | {period}")
+        print(f"{'='*60}")
 
         # Step 1: Parse tracker
         generation_status[job_id] = {"status": "running", "progress": 10, "message": "Reading coverage tracker..."}
@@ -294,9 +314,13 @@ def _run_generation(job_id, client_name, period, tracker_path):
             try:
                 from data_sources.tracker_parser import parse_tracker_sheet
                 tracker_data = parse_tracker_sheet(tracker_path, client_name)
+                print(f"  [Tracker] Found {tracker_data.get('total_placements', 0)} placements")
             except Exception as e:
                 warnings.append(f"Tracker: {e}")
+                print(f"  [Tracker] ERROR: {e}")
                 tracker_data = {"total_placements": 0, "rows": []}
+        else:
+            print(f"  [Tracker] No tracker file found at: {tracker_path}")
 
         # Step 2: Fetch Asana data
         generation_status[job_id] = {"status": "running", "progress": 25, "message": "Fetching Asana deliverables..."}
@@ -304,6 +328,9 @@ def _run_generation(job_id, client_name, period, tracker_path):
         asana_token = os.getenv("ASANA_PAT")
         deliverables = []
         period_start_date, period_end_date = _parse_period_dates(period)
+        print(f"  [Asana] Token present: {bool(asana_token)}")
+        print(f"  [Asana] Token first 8 chars: {asana_token[:8] + '...' if asana_token else 'NONE'}")
+        print(f"  [Asana] Period parsed: {period_start_date} to {period_end_date}")
         if asana_token:
             try:
                 from data_sources.asana_fetcher import fetch_asana_data
@@ -313,12 +340,20 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     period_end=period_end_date,
                 )
                 deliverables = asana_data.get("deliverables", [])
+                print(f"  [Asana] Projects found: {[p['name'] for p in asana_data.get('projects_found', [])]}")
+                print(f"  [Asana] Total tasks: {asana_data.get('total_tasks', 0)}")
+                print(f"  [Asana] Deliverables: {len(deliverables)}")
                 if asana_data.get("error"):
                     warnings.append(f"Asana: {asana_data['error']}")
+                    print(f"  [Asana] WARNING: {asana_data['error']}")
             except Exception as e:
                 warnings.append(f"Asana error: {e}")
+                print(f"  [Asana] ERROR: {e}")
+                import traceback
+                traceback.print_exc()
         else:
             warnings.append("Asana: No token configured — deliverables will be empty")
+            print("  [Asana] SKIPPED — no token")
 
         # Step 3: Generate insights
         generation_status[job_id] = {"status": "running", "progress": 40, "message": "Generating strategic insights..."}
@@ -353,7 +388,10 @@ def _run_generation(job_id, client_name, period, tracker_path):
         # Step 4: Build PPTX
         generation_status[job_id] = {"status": "running", "progress": 85, "message": "Building PowerPoint report..."}
 
-        from report_builder.slide_factory import build_report
+        from report_builder.slide_factory import build_report, load_logo, load_admc_logo, _INPUT_DIRS
+        print(f"  [Logos] Input dirs: {_INPUT_DIRS}")
+        print(f"  [Logos] Client logo: {load_logo(client_name)}")
+        print(f"  [Logos] ADMC logo: {load_admc_logo()}")
 
         safe_name = client_name.replace(" ", "_")
         safe_period = period.replace(" ", "_").replace("/", "-").replace("–", "-")

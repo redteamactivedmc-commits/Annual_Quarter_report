@@ -367,13 +367,14 @@ def build_highlights_slide(prs, blank, client, tracker_data):
     add_footer(slide, client)
 
 
-def build_deliverables_slide(prs, blank, client, deliverables):
+def build_deliverables_slide(prs, blank, client, deliverables, note=None):
     slide = prs.slides.add_slide(blank)
     add_header_rule(slide)
     add_text_box(slide, "Deliverables Overview", 0.5, 0.15, 6, 0.5,
                  font_size=28, bold=True, color="0D1B2E")
     if not deliverables:
-        add_text_box(slide, "[No deliverables data available]", 0.5, 2, 12, 1,
+        msg = note or "[No deliverables data available]"
+        add_text_box(slide, msg, 0.5, 2, 12, 2,
                      font_size=14, color="888888")
         add_footer(slide, client)
         return
@@ -668,7 +669,8 @@ def build_closing_slide(prs, blank, client):
         y += 0.4
 
 
-def build_report(client, period, tracker_data, deliverables, insights, output_path):
+def build_report(client, period, tracker_data, deliverables, insights, output_path,
+                 deliverables_note=None):
     """Build the complete ADMC branded PowerPoint report."""
     tracker_data = tracker_data or {}
     deliverables = deliverables or []
@@ -688,7 +690,7 @@ def build_report(client, period, tracker_data, deliverables, insights, output_pa
     build_highlights_slide(prs, blank, client, tracker_data)
 
     build_section_divider(prs, blank, "Deliverables Overview")
-    build_deliverables_slide(prs, blank, client, deliverables)
+    build_deliverables_slide(prs, blank, client, deliverables, note=deliverables_note)
 
     build_section_divider(prs, blank, "Coverage Analysis")
     build_analysis_slide(prs, blank, client, tracker_data, insights.get("coverage_analysis", {}))

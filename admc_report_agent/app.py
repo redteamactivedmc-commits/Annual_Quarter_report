@@ -82,6 +82,35 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 generation_status = {}
 
 
+def _get_asana_token():
+    """Get the Asana token from env var, or from a plain asana_token.txt file.
+
+    The text-file fallback is the simplest possible way to configure the
+    token — it avoids any .env encoding/quoting issues.
+    """
+    token = os.getenv("ASANA_PAT")
+    if token and token.strip():
+        return token.strip()
+    for candidate in (
+        os.path.join(_THIS_DIR, "asana_token.txt"),
+        os.path.join(_THIS_DIR, "..", "asana_token.txt"),
+    ):
+        if os.path.exists(candidate):
+            try:
+                for enc in ("utf-8-sig", "utf-8", "cp1252", "latin-1"):
+                    try:
+                        with open(candidate, "r", encoding=enc) as f:
+                            val = f.read().strip().strip("\"'")
+                        if val:
+                            os.environ["ASANA_PAT"] = val
+                            return val
+                    except (UnicodeDecodeError, UnicodeError):
+                        continue
+            except Exception:
+                pass
+    return None
+
+
 def find_tracker_path():
     """Find the tracker file from env var, settings, or local fallbacks."""
     custom = os.getenv("ADMC_TRACKER_PATH")
@@ -117,7 +146,7 @@ def get_config():
     """Return current configuration status."""
     tracker_path = find_tracker_path()
     has_anthropic = bool(os.getenv("ANTHROPIC_API_KEY"))
-    has_asana = bool(os.getenv("ASANA_PAT"))
+    has_asana = bool(_get_asana_token())
 
     clients = []
     if tracker_path:
@@ -343,8 +372,9 @@ def _run_generation(job_id, client_name, period, tracker_path):
         # Step 2: Fetch Asana data
         generation_status[job_id] = {"status": "running", "progress": 25, "message": "Fetching Asana deliverables..."}
 
-        asana_token = os.getenv("ASANA_PAT")
+        asana_token = _get_asana_token()
         deliverables = []
+        asana_note = None
         period_start_date, period_end_date = _parse_period_dates(period)
         print(f"  [Asana] Token present: {bool(asana_token)}")
         print(f"  [Asana] Token first 8 chars: {asana_token[:8] + '...' if asana_token else 'NONE'}")
@@ -363,14 +393,27 @@ def _run_generation(job_id, client_name, period, tracker_path):
                 print(f"  [Asana] Deliverables: {len(deliverables)}")
                 if asana_data.get("error"):
                     warnings.append(f"Asana: {asana_data['error']}")
+                    asana_note = f"Could not load deliverables from Asana:\n{asana_data['error']}"
                     print(f"  [Asana] WARNING: {asana_data['error']}")
+                elif not deliverables:
+                    asana_note = (
+                        f"No deliverables found for '{client_name}' in the period "
+                        f"{period_start_date} to {period_end_date}.\n"
+                        f"Asana connected OK but matched 0 tasks in this date range."
+                    )
             except Exception as e:
                 warnings.append(f"Asana error: {e}")
+                asana_note = f"Asana error: {e}"
                 print(f"  [Asana] ERROR: {e}")
                 import traceback
                 traceback.print_exc()
         else:
             warnings.append("Asana: No token configured — deliverables will be empty")
+            asana_note = (
+                "No Asana token configured.\n"
+                "Add your token in Settings, or create a file named 'asana_token.txt' "
+                "in the admc_report_agent folder containing just the token."
+            )
             print("  [Asana] SKIPPED — no token")
 
         # Step 3: Generate insights
@@ -423,6 +466,7 @@ def _run_generation(job_id, client_name, period, tracker_path):
             deliverables=deliverables,
             insights=insights,
             output_path=output_path,
+            deliverables_note=asana_note,
         )
 
         msg = "Report ready!"

@@ -1,15 +1,18 @@
 import re
 from collections import defaultdict
 
+# Order matters — detect_type returns the FIRST matching type.
+# More specific deliverable types are listed before generic ones.
 DELIVERABLE_TYPE_KEYWORDS = {
-    "press_release": ["press release", "media alert", "announcement", "news release"],
-    "interview": ["interview", "briefing", "media brief", "journalist meet"],
-    "byline": ["byline", "op-ed", "thought leadership article", "contributed article", "opinion", "contributed"],
+    "press_release": ["press release", "media alert", "news release"],
+    "interview": ["interview", "feature", "briefing", "media brief", "journalist meet"],
+    "byline": ["byline", "op-ed", "thought leadership", "contributed article", "contributed", "opinion piece"],
+    "commentary": ["commentary", "comment", "reactive", "quote", "statement", "reaction"],
     "event": ["event", "summit", "conference", "panel", "speaking", "webinar"],
     "social": ["social", "linkedin", "twitter", "instagram"],
     "media_list": ["media list", "media database", "journalist list"],
-    "pitch": ["pitch", "pitching", "media pitch"],
-    "report": ["report", "monthly report", "quarterly report", "coverage report"],
+    "pitch": ["pitch", "pitching"],
+    "announcement": ["announcement"],
 }
 
 # Common filler words to strip from grouping keys

@@ -284,6 +284,8 @@ def _parse_period_dates(period):
 def _run_generation(job_id, client_name, period, tracker_path):
     """Background report generation."""
     try:
+        warnings = []
+
         # Step 1: Parse tracker
         generation_status[job_id] = {"status": "running", "progress": 10, "message": "Reading coverage tracker..."}
 
@@ -293,7 +295,7 @@ def _run_generation(job_id, client_name, period, tracker_path):
                 from data_sources.tracker_parser import parse_tracker_sheet
                 tracker_data = parse_tracker_sheet(tracker_path, client_name)
             except Exception as e:
-                generation_status[job_id]["message"] = f"Tracker warning: {e}"
+                warnings.append(f"Tracker: {e}")
                 tracker_data = {"total_placements": 0, "rows": []}
 
         # Step 2: Fetch Asana data
@@ -312,9 +314,11 @@ def _run_generation(job_id, client_name, period, tracker_path):
                 )
                 deliverables = asana_data.get("deliverables", [])
                 if asana_data.get("error"):
-                    generation_status[job_id]["message"] = f"Asana warning: {asana_data['error']}"
+                    warnings.append(f"Asana: {asana_data['error']}")
             except Exception as e:
-                generation_status[job_id]["message"] = f"Asana error: {e}"
+                warnings.append(f"Asana error: {e}")
+        else:
+            warnings.append("Asana: No token configured — deliverables will be empty")
 
         # Step 3: Generate insights
         generation_status[job_id] = {"status": "running", "progress": 40, "message": "Generating strategic insights..."}
@@ -342,7 +346,9 @@ def _run_generation(job_id, client_name, period, tracker_path):
                     progress_callback=progress_cb,
                 )
             except Exception as e:
-                generation_status[job_id]["message"] = f"AI warning: {e}"
+                warnings.append(f"AI: {e}")
+        else:
+            warnings.append("AI: No Anthropic API key — insights will be empty")
 
         # Step 4: Build PPTX
         generation_status[job_id] = {"status": "running", "progress": 85, "message": "Building PowerPoint report..."}
@@ -363,11 +369,15 @@ def _run_generation(job_id, client_name, period, tracker_path):
             output_path=output_path,
         )
 
+        msg = "Report ready!"
+        if warnings:
+            msg += " Warnings: " + "; ".join(warnings)
         generation_status[job_id] = {
             "status": "complete",
             "progress": 100,
-            "message": "Report ready!",
+            "message": msg,
             "filename": filename,
+            "warnings": warnings,
         }
 
     except Exception as e:
@@ -420,27 +430,31 @@ def asana_setup():
 
 @app.route("/api/assets")
 def list_assets():
-    """List available logos and images in the input folder."""
-    input_dir = os.path.join(_THIS_DIR, "input")
-    if not os.path.isdir(input_dir):
-        alt = os.path.join(_THIS_DIR, "Inputs")
-        if os.path.isdir(alt):
-            input_dir = alt
-    assets = {"client_logos": [], "admc_logos": [], "images": []}
+    """List available logos and images in input/ and Inputs/ folders."""
+    input_dirs = []
+    for name in ("input", "Inputs"):
+        d = os.path.join(_THIS_DIR, name)
+        if os.path.isdir(d):
+            input_dirs.append(d)
 
-    clients_dir = os.path.join(input_dir, "logos", "clients")
-    if os.path.exists(clients_dir):
-        assets["client_logos"] = [f for f in os.listdir(clients_dir) if not f.startswith(".")]
+    assets = {"client_logos": set(), "admc_logos": set(), "images": set()}
 
-    admc_dir = os.path.join(input_dir, "logos", "active_dmc")
-    if os.path.exists(admc_dir):
-        assets["admc_logos"] = [f for f in os.listdir(admc_dir) if not f.startswith(".")]
+    for input_dir in input_dirs:
+        for sub in ("logos/clients", "logos/Clients"):
+            clients_dir = os.path.join(input_dir, sub)
+            if os.path.isdir(clients_dir):
+                assets["client_logos"].update(f for f in os.listdir(clients_dir) if not f.startswith("."))
 
-    images_dir = os.path.join(input_dir, "images")
-    if os.path.exists(images_dir):
-        assets["images"] = [f for f in os.listdir(images_dir) if not f.startswith(".")]
+        for sub in ("logos/active_dmc", "logos/Active_DMC"):
+            admc_dir = os.path.join(input_dir, sub)
+            if os.path.isdir(admc_dir):
+                assets["admc_logos"].update(f for f in os.listdir(admc_dir) if not f.startswith("."))
 
-    return jsonify(assets)
+        images_dir = os.path.join(input_dir, "images")
+        if os.path.isdir(images_dir):
+            assets["images"].update(f for f in os.listdir(images_dir) if not f.startswith("."))
+
+    return jsonify({k: sorted(v) for k, v in assets.items()})
 
 
 if __name__ == "__main__":

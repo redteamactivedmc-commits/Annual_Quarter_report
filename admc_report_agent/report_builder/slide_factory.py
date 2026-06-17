@@ -10,12 +10,15 @@ import glob as _glob
 
 # Base directory for resolving input paths relative to the package
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Support both "input" and "Inputs" folder names
-_INPUT_DIR = os.path.join(_PKG_DIR, "input")
-if not os.path.isdir(_INPUT_DIR):
-    _alt = os.path.join(_PKG_DIR, "Inputs")
-    if os.path.isdir(_alt):
-        _INPUT_DIR = _alt
+# Support both "input" and "Inputs" folder names — check both because
+# git may create an empty "input/" while user files live in "Inputs/"
+_INPUT_DIRS = []
+for _candidate in ("input", "Inputs"):
+    _d = os.path.join(_PKG_DIR, _candidate)
+    if os.path.isdir(_d):
+        _INPUT_DIRS.append(_d)
+if not _INPUT_DIRS:
+    _INPUT_DIRS = [os.path.join(_PKG_DIR, "input")]
 
 COLORS = {
     "teal_primary": "0097B2",
@@ -111,23 +114,25 @@ def add_teal_background(slide):
     fill.fore_color.rgb = hex_to_rgb("0097B2")
 
 
+def _find_clients_dirs():
+    """Return all existing client logo directories across input/Inputs/assets."""
+    dirs = []
+    for base in _INPUT_DIRS:
+        for sub in ("logos/clients", "logos/Clients"):
+            d = os.path.join(base, sub)
+            if os.path.isdir(d):
+                dirs.append(d)
+    assets_d = os.path.join(_PKG_DIR, "assets", "clients")
+    if os.path.isdir(assets_d):
+        dirs.append(assets_d)
+    return dirs
+
+
 def load_logo(client_name, assets_dir=None):
-    """Find a client logo image.
-
-    Lookup order:
-      1. Exact name match: {ClientName}.{ext}
-      2. Case/separator variants: lowercase, uppercase, underscores, hyphens
-      3. Directory scan: any file whose name contains the client name (case-insensitive)
-    Extensions tried: .png, .jpg, .jpeg, .webp
-    Falls back to legacy assets_dir if provided.
-    """
-    clients_dir = os.path.join(_INPUT_DIR, "logos", "clients")
-    if not os.path.isdir(clients_dir):
-        alt = os.path.join(_INPUT_DIR, "logos", "Clients")
-        if os.path.isdir(alt):
-            clients_dir = alt
+    """Find a client logo image, searching all known directories."""
+    if not client_name:
+        return None
     extensions = [".png", ".jpg", ".jpeg", ".webp"]
-
     variants = [
         client_name,
         client_name.lower(),
@@ -137,42 +142,23 @@ def load_logo(client_name, assets_dir=None):
         client_name.lower().replace(" ", "_"),
         client_name.lower().replace(" ", "-"),
     ]
-
-    for name in variants:
-        for ext in extensions:
-            path = os.path.join(clients_dir, name + ext)
-            if os.path.exists(path):
-                return path
-
-    # Scan directory for any file containing the client name
     client_lower = client_name.lower().split()[0] if client_name.strip() else ""
-    if client_lower and os.path.isdir(clients_dir):
-        for fname in os.listdir(clients_dir):
-            if fname.startswith("."):
-                continue
-            stem = os.path.splitext(fname)[0].lower()
-            ext_lower = os.path.splitext(fname)[1].lower()
-            if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
-                return os.path.join(clients_dir, fname)
 
-    # Check assets/clients/ directory as fallback
-    assets_clients = os.path.join(_PKG_DIR, "assets", "clients")
-    if os.path.isdir(assets_clients):
+    for clients_dir in _find_clients_dirs():
         for name in variants:
             for ext in extensions:
-                path = os.path.join(assets_clients, name + ext)
+                path = os.path.join(clients_dir, name + ext)
                 if os.path.exists(path):
                     return path
         if client_lower:
-            for fname in os.listdir(assets_clients):
+            for fname in os.listdir(clients_dir):
                 if fname.startswith("."):
                     continue
                 stem = os.path.splitext(fname)[0].lower()
                 ext_lower = os.path.splitext(fname)[1].lower()
                 if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
-                    return os.path.join(assets_clients, fname)
+                    return os.path.join(clients_dir, fname)
 
-    # Legacy fallback
     if assets_dir:
         for name in variants:
             for ext in extensions:
@@ -183,49 +169,41 @@ def load_logo(client_name, assets_dir=None):
     return None
 
 
+def _find_admc_dirs():
+    """Return all existing ADMC logo directories."""
+    dirs = []
+    for base in _INPUT_DIRS:
+        for sub in ("logos/active_dmc", "logos/Active_DMC", "logos/active_DMC",
+                     "logos/ActiveDMC", "logos/ACTIVE_DMC"):
+            d = os.path.join(base, sub)
+            if os.path.isdir(d):
+                dirs.append(d)
+    return dirs
+
+
 def load_admc_logo():
-    """Find the Active DMC logo image.
-
-    Lookup order:
-      1. input/logos/active_dmc/active_dmc_logo.png
-      2. input/logos/active_dmc/logo.png
-      3. Any image file in input/logos/active_dmc/
-    Returns the path if found, else None.
-    """
-    admc_dir = os.path.join(_INPUT_DIR, "logos", "active_dmc")
-    if not os.path.isdir(admc_dir):
-        for alt_name in ["Active_DMC", "active_DMC", "ActiveDMC", "ACTIVE_DMC"]:
-            alt = os.path.join(_INPUT_DIR, "logos", alt_name)
-            if os.path.isdir(alt):
-                admc_dir = alt
-                break
-
-    # Specific names first
-    for candidate in ["active_dmc_logo.png", "logo.png"]:
-        path = os.path.join(admc_dir, candidate)
-        if os.path.exists(path):
-            return path
-
-    # Any image file in the directory
+    """Find the Active DMC logo image, searching all known directories."""
     image_exts = ("*.png", "*.jpg", "*.jpeg", "*.webp")
-    for ext_pattern in image_exts:
-        matches = _glob.glob(os.path.join(admc_dir, ext_pattern))
-        if matches:
-            return matches[0]
-
+    for admc_dir in _find_admc_dirs():
+        for candidate in ["active_dmc_logo.png", "logo.png"]:
+            path = os.path.join(admc_dir, candidate)
+            if os.path.exists(path):
+                return path
+        for ext_pattern in image_exts:
+            matches = _glob.glob(os.path.join(admc_dir, ext_pattern))
+            if matches:
+                return matches[0]
     return None
 
 
 def load_cover_image():
-    """Find a cover image in input/images/.
-
-    Checks cover.png then cover.jpg.
-    """
-    images_dir = os.path.join(_INPUT_DIR, "images")
-    for name in ["cover.png", "cover.jpg"]:
-        path = os.path.join(images_dir, name)
-        if os.path.exists(path):
-            return path
+    """Find a cover image in input/images/ or Inputs/images/."""
+    for base in _INPUT_DIRS:
+        images_dir = os.path.join(base, "images")
+        for name in ["cover.png", "cover.jpg"]:
+            path = os.path.join(images_dir, name)
+            if os.path.exists(path):
+                return path
     return None
 
 

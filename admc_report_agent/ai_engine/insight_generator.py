@@ -1,7 +1,27 @@
 import json
+import os
 import anthropic
 
+
+def _load_skills_context():
+    """Load PR skills from the skills/ directory to enrich AI prompts."""
+    skills_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "skills")
+    context_parts = []
+    for fname in ("Media_Outreach_SKILL.md", "regional-fit-checks.md", "outreach-templates.md"):
+        fpath = os.path.join(skills_dir, fname)
+        if os.path.exists(fpath):
+            try:
+                with open(fpath, "r", encoding="utf-8") as f:
+                    context_parts.append(f.read())
+            except Exception:
+                pass
+    return "\n\n".join(context_parts)
+
+
+_SKILLS_CONTEXT = _load_skills_context()
+
 INSIGHT_SYSTEM_PROMPT = """You are a senior communications strategist at Active DMC, a premium PR agency in Dubai.
+You handle PR for technology clients in the GCC region, with primary focus on UAE and KSA markets.
 Generate strategic insights for client communications reports.
 
 INSIGHT FRAMEWORK — every insight must follow:
@@ -262,20 +282,29 @@ def generate_section_insights(
     else:
         json_schema = '{"insights": [{"what": "...", "why": "...", "implication": "..."}], "summary": "..."}'
 
+    skills_block = ""
+    if section_name in ("ninety_day_plan", "recommendations", "narrative", "media_relations") and _SKILLS_CONTEXT:
+        skills_block = f"""
+
+PR AGENCY SKILLS & REGIONAL CONTEXT (use these to ground your output):
+{_SKILLS_CONTEXT[:3000]}
+"""
+
     user_prompt = f"""Generate insights for the "{section_name}" section of an Active DMC communications report.
 
 CLIENT: {client}
 REPORTING PERIOD: {period}
+MARKET FOCUS: GCC region — primary focus on UAE and KSA
 
 SECTION GUIDANCE: {section_guidance}
-
+{skills_block}
 DATA:
 {json.dumps(data_context, indent=2, default=str)}
 
 Return ONLY a JSON object matching this structure (no markdown, no preamble):
 {json_schema}
 
-Be specific to the data provided — never generic."""
+Be specific to the data provided and the GCC/UAE/KSA market context — never generic."""
 
     models_to_try = [
         "claude-sonnet-4-6",
@@ -287,7 +316,7 @@ Be specific to the data provided — never generic."""
         try:
             response = client_api.messages.create(
                 model=model_id,
-                max_tokens=1500,
+                max_tokens=4096,
                 system=INSIGHT_SYSTEM_PROMPT,
                 messages=[{"role": "user", "content": user_prompt}],
             )
@@ -372,7 +401,17 @@ def generate_all_insights(
         try:
             result = generate_section_insights(client, period, section, base_context, api_key)
             results[section] = result
+            print(f"  [AI] {section}: OK ({len(str(result))} chars)")
         except Exception as e:
-            results[section] = {"error": str(e), "insights": [], "summary": f"[Insight generation failed: {e}]"}
+            print(f"  [AI] {section}: FAILED — {e}")
+            fallback = {"error": str(e), "insights": [], "summary": f"[Insight generation failed: {e}]"}
+            if section == "observation":
+                fallback["went_well"] = [f"[Could not generate: {e}]"]
+                fallback["improve"] = [f"[Could not generate: {e}]"]
+            elif section == "recommendations":
+                fallback["recommendations"] = []
+            elif section == "ninety_day_plan":
+                fallback["months"] = []
+            results[section] = fallback
 
     return results

@@ -10,12 +10,15 @@ import glob as _glob
 
 # Base directory for resolving input paths relative to the package
 _PKG_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# Support both "input" and "Inputs" folder names
-_INPUT_DIR = os.path.join(_PKG_DIR, "input")
-if not os.path.isdir(_INPUT_DIR):
-    _alt = os.path.join(_PKG_DIR, "Inputs")
-    if os.path.isdir(_alt):
-        _INPUT_DIR = _alt
+# Support both "input" and "Inputs" folder names — check both because
+# git may create an empty "input/" while user files live in "Inputs/"
+_INPUT_DIRS = []
+for _candidate in ("input", "Inputs"):
+    _d = os.path.join(_PKG_DIR, _candidate)
+    if os.path.isdir(_d):
+        _INPUT_DIRS.append(_d)
+if not _INPUT_DIRS:
+    _INPUT_DIRS = [os.path.join(_PKG_DIR, "input")]
 
 COLORS = {
     "teal_primary": "0097B2",
@@ -111,23 +114,42 @@ def add_teal_background(slide):
     fill.fore_color.rgb = hex_to_rgb("0097B2")
 
 
+def _add_logo_scaled(slide, img_path, left, top, max_w=2.0, max_h=0.7):
+    """Add a logo to the slide, scaled to fit within max_w x max_h while preserving aspect ratio."""
+    from PIL import Image
+    try:
+        with Image.open(img_path) as img:
+            img_w, img_h = img.size
+        ratio = img_w / img_h
+        w = max_w
+        h = w / ratio
+        if h > max_h:
+            h = max_h
+            w = h * ratio
+        slide.shapes.add_picture(img_path, Inches(left), Inches(top), Inches(w), Inches(h))
+    except Exception:
+        slide.shapes.add_picture(img_path, Inches(left), Inches(top), Inches(max_w), Inches(max_h))
+
+
+def _find_clients_dirs():
+    """Return all existing client logo directories across input/Inputs/assets."""
+    dirs = []
+    for base in _INPUT_DIRS:
+        for sub in ("logos/clients", "logos/Clients"):
+            d = os.path.join(base, sub)
+            if os.path.isdir(d):
+                dirs.append(d)
+    assets_d = os.path.join(_PKG_DIR, "assets", "clients")
+    if os.path.isdir(assets_d):
+        dirs.append(assets_d)
+    return dirs
+
+
 def load_logo(client_name, assets_dir=None):
-    """Find a client logo image.
-
-    Lookup order:
-      1. Exact name match: {ClientName}.{ext}
-      2. Case/separator variants: lowercase, uppercase, underscores, hyphens
-      3. Directory scan: any file whose name contains the client name (case-insensitive)
-    Extensions tried: .png, .jpg, .jpeg, .webp
-    Falls back to legacy assets_dir if provided.
-    """
-    clients_dir = os.path.join(_INPUT_DIR, "logos", "clients")
-    if not os.path.isdir(clients_dir):
-        alt = os.path.join(_INPUT_DIR, "logos", "Clients")
-        if os.path.isdir(alt):
-            clients_dir = alt
+    """Find a client logo image, searching all known directories."""
+    if not client_name:
+        return None
     extensions = [".png", ".jpg", ".jpeg", ".webp"]
-
     variants = [
         client_name,
         client_name.lower(),
@@ -137,42 +159,23 @@ def load_logo(client_name, assets_dir=None):
         client_name.lower().replace(" ", "_"),
         client_name.lower().replace(" ", "-"),
     ]
-
-    for name in variants:
-        for ext in extensions:
-            path = os.path.join(clients_dir, name + ext)
-            if os.path.exists(path):
-                return path
-
-    # Scan directory for any file containing the client name
     client_lower = client_name.lower().split()[0] if client_name.strip() else ""
-    if client_lower and os.path.isdir(clients_dir):
-        for fname in os.listdir(clients_dir):
-            if fname.startswith("."):
-                continue
-            stem = os.path.splitext(fname)[0].lower()
-            ext_lower = os.path.splitext(fname)[1].lower()
-            if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
-                return os.path.join(clients_dir, fname)
 
-    # Check assets/clients/ directory as fallback
-    assets_clients = os.path.join(_PKG_DIR, "assets", "clients")
-    if os.path.isdir(assets_clients):
+    for clients_dir in _find_clients_dirs():
         for name in variants:
             for ext in extensions:
-                path = os.path.join(assets_clients, name + ext)
+                path = os.path.join(clients_dir, name + ext)
                 if os.path.exists(path):
                     return path
         if client_lower:
-            for fname in os.listdir(assets_clients):
+            for fname in os.listdir(clients_dir):
                 if fname.startswith("."):
                     continue
                 stem = os.path.splitext(fname)[0].lower()
                 ext_lower = os.path.splitext(fname)[1].lower()
                 if ext_lower in extensions and (client_lower in stem or stem in client_name.lower()):
-                    return os.path.join(assets_clients, fname)
+                    return os.path.join(clients_dir, fname)
 
-    # Legacy fallback
     if assets_dir:
         for name in variants:
             for ext in extensions:
@@ -183,49 +186,41 @@ def load_logo(client_name, assets_dir=None):
     return None
 
 
+def _find_admc_dirs():
+    """Return all existing ADMC logo directories."""
+    dirs = []
+    for base in _INPUT_DIRS:
+        for sub in ("logos/active_dmc", "logos/Active_DMC", "logos/active_DMC",
+                     "logos/ActiveDMC", "logos/ACTIVE_DMC"):
+            d = os.path.join(base, sub)
+            if os.path.isdir(d):
+                dirs.append(d)
+    return dirs
+
+
 def load_admc_logo():
-    """Find the Active DMC logo image.
-
-    Lookup order:
-      1. input/logos/active_dmc/active_dmc_logo.png
-      2. input/logos/active_dmc/logo.png
-      3. Any image file in input/logos/active_dmc/
-    Returns the path if found, else None.
-    """
-    admc_dir = os.path.join(_INPUT_DIR, "logos", "active_dmc")
-    if not os.path.isdir(admc_dir):
-        for alt_name in ["Active_DMC", "active_DMC", "ActiveDMC", "ACTIVE_DMC"]:
-            alt = os.path.join(_INPUT_DIR, "logos", alt_name)
-            if os.path.isdir(alt):
-                admc_dir = alt
-                break
-
-    # Specific names first
-    for candidate in ["active_dmc_logo.png", "logo.png"]:
-        path = os.path.join(admc_dir, candidate)
-        if os.path.exists(path):
-            return path
-
-    # Any image file in the directory
+    """Find the Active DMC logo image, searching all known directories."""
     image_exts = ("*.png", "*.jpg", "*.jpeg", "*.webp")
-    for ext_pattern in image_exts:
-        matches = _glob.glob(os.path.join(admc_dir, ext_pattern))
-        if matches:
-            return matches[0]
-
+    for admc_dir in _find_admc_dirs():
+        for candidate in ["active_dmc_logo.png", "logo.png"]:
+            path = os.path.join(admc_dir, candidate)
+            if os.path.exists(path):
+                return path
+        for ext_pattern in image_exts:
+            matches = _glob.glob(os.path.join(admc_dir, ext_pattern))
+            if matches:
+                return matches[0]
     return None
 
 
 def load_cover_image():
-    """Find a cover image in input/images/.
-
-    Checks cover.png then cover.jpg.
-    """
-    images_dir = os.path.join(_INPUT_DIR, "images")
-    for name in ["cover.png", "cover.jpg"]:
-        path = os.path.join(images_dir, name)
-        if os.path.exists(path):
-            return path
+    """Find a cover image in input/images/ or Inputs/images/."""
+    for base in _INPUT_DIRS:
+        images_dir = os.path.join(base, "images")
+        for name in ["cover.png", "cover.jpg"]:
+            path = os.path.join(images_dir, name)
+            if os.path.exists(path):
+                return path
     return None
 
 
@@ -262,10 +257,7 @@ def build_cover_slide(prs, blank, client, period):
     # Active DMC logo or text fallback
     admc_logo = load_admc_logo()
     if admc_logo:
-        slide.shapes.add_picture(
-            admc_logo,
-            Inches(0.8), Inches(6.3), Inches(1.5), Inches(0.5)
-        )
+        _add_logo_scaled(slide, admc_logo, 0.8, 6.2, max_w=2.0, max_h=0.7)
     else:
         add_text_box(slide, "Active DMC", 0.8, 6.5, 2, 0.4,
                      font_size=11, bold=True, color="FFFFFF")
@@ -273,10 +265,7 @@ def build_cover_slide(prs, blank, client, period):
     # Client logo or text fallback
     client_logo = load_logo(client)
     if client_logo:
-        slide.shapes.add_picture(
-            client_logo,
-            Inches(SLIDE_W - 2.5), Inches(6.3), Inches(1.5), Inches(0.5)
-        )
+        _add_logo_scaled(slide, client_logo, SLIDE_W - 2.8, 6.2, max_w=2.0, max_h=0.7)
     else:
         add_text_box(slide, client, SLIDE_W - 3, 6.5, 2.5, 0.4,
                      font_size=11, bold=True, color="FFFFFF", align=PP_ALIGN.RIGHT)
@@ -568,17 +557,21 @@ def build_recommendations_slide(prs, blank, client, insights):
     recs = []
     if isinstance(insights, dict):
         recs = insights.get("recommendations", [])
-    y = 1.2
-    for i, rec in enumerate(recs[:5], 1):
-        if isinstance(rec, dict):
-            title = rec.get("title", "")
-            desc = rec.get("description", "")
-            text = f"{i}. {title}: {desc}"
-        else:
-            text = f"{i}. {rec}"
-        add_text_box(slide, text, 0.5, y, 12, 0.8,
-                     font_size=12, color="1A2B4A")
-        y += 0.95
+    if recs:
+        y = 1.2
+        for i, rec in enumerate(recs[:5], 1):
+            if isinstance(rec, dict):
+                title = rec.get("title", "")
+                desc = rec.get("description", "")
+                text = f"{i}. {title}: {desc}"
+            else:
+                text = f"{i}. {rec}"
+            add_text_box(slide, text, 0.5, y, 12, 0.8,
+                         font_size=12, color="1A2B4A")
+            y += 0.95
+    else:
+        add_text_box(slide, "[Recommendations could not be generated — check API key]", 0.5, 2, 12, 1,
+                     font_size=14, color="888888")
     add_footer(slide, client)
 
 
@@ -649,10 +642,7 @@ def build_closing_slide(prs, blank, client):
     # Active DMC logo or text fallback
     admc_logo = load_admc_logo()
     if admc_logo:
-        slide.shapes.add_picture(
-            admc_logo,
-            Inches(7.5), Inches(1.2), Inches(2.5), Inches(0.8)
-        )
+        _add_logo_scaled(slide, admc_logo, 7.5, 1.2, max_w=3.0, max_h=1.2)
     else:
         add_text_box(slide, "Active DMC", 7.5, 1.5, 5, 0.5,
                      font_size=24, bold=True, color="0097B2")
@@ -663,10 +653,7 @@ def build_closing_slide(prs, blank, client):
     # Client logo (bottom-right of the closing slide)
     client_logo = load_logo(client)
     if client_logo:
-        slide.shapes.add_picture(
-            client_logo,
-            Inches(7.5), Inches(5.5), Inches(2.0), Inches(0.7)
-        )
+        _add_logo_scaled(slide, client_logo, 7.5, 5.3, max_w=2.5, max_h=1.0)
 
     contact_lines = [
         "info@activedmc.com",

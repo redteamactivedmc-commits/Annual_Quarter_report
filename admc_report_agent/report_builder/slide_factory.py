@@ -114,6 +114,23 @@ def add_teal_background(slide):
     fill.fore_color.rgb = hex_to_rgb("0097B2")
 
 
+def _add_logo_scaled(slide, img_path, left, top, max_w=2.0, max_h=0.7):
+    """Add a logo to the slide, scaled to fit within max_w x max_h while preserving aspect ratio."""
+    from PIL import Image
+    try:
+        with Image.open(img_path) as img:
+            img_w, img_h = img.size
+        ratio = img_w / img_h
+        w = max_w
+        h = w / ratio
+        if h > max_h:
+            h = max_h
+            w = h * ratio
+        slide.shapes.add_picture(img_path, Inches(left), Inches(top), Inches(w), Inches(h))
+    except Exception:
+        slide.shapes.add_picture(img_path, Inches(left), Inches(top), Inches(max_w), Inches(max_h))
+
+
 def _find_clients_dirs():
     """Return all existing client logo directories across input/Inputs/assets."""
     dirs = []
@@ -240,10 +257,7 @@ def build_cover_slide(prs, blank, client, period):
     # Active DMC logo or text fallback
     admc_logo = load_admc_logo()
     if admc_logo:
-        slide.shapes.add_picture(
-            admc_logo,
-            Inches(0.8), Inches(6.3), Inches(1.5), Inches(0.5)
-        )
+        _add_logo_scaled(slide, admc_logo, 0.8, 6.2, max_w=2.0, max_h=0.7)
     else:
         add_text_box(slide, "Active DMC", 0.8, 6.5, 2, 0.4,
                      font_size=11, bold=True, color="FFFFFF")
@@ -251,10 +265,7 @@ def build_cover_slide(prs, blank, client, period):
     # Client logo or text fallback
     client_logo = load_logo(client)
     if client_logo:
-        slide.shapes.add_picture(
-            client_logo,
-            Inches(SLIDE_W - 2.5), Inches(6.3), Inches(1.5), Inches(0.5)
-        )
+        _add_logo_scaled(slide, client_logo, SLIDE_W - 2.8, 6.2, max_w=2.0, max_h=0.7)
     else:
         add_text_box(slide, client, SLIDE_W - 3, 6.5, 2.5, 0.4,
                      font_size=11, bold=True, color="FFFFFF", align=PP_ALIGN.RIGHT)
@@ -631,10 +642,7 @@ def build_closing_slide(prs, blank, client):
     # Active DMC logo or text fallback
     admc_logo = load_admc_logo()
     if admc_logo:
-        slide.shapes.add_picture(
-            admc_logo,
-            Inches(7.5), Inches(1.2), Inches(2.5), Inches(0.8)
-        )
+        _add_logo_scaled(slide, admc_logo, 7.5, 1.2, max_w=3.0, max_h=1.2)
     else:
         add_text_box(slide, "Active DMC", 7.5, 1.5, 5, 0.5,
                      font_size=24, bold=True, color="0097B2")
@@ -645,10 +653,7 @@ def build_closing_slide(prs, blank, client):
     # Client logo (bottom-right of the closing slide)
     client_logo = load_logo(client)
     if client_logo:
-        slide.shapes.add_picture(
-            client_logo,
-            Inches(7.5), Inches(5.5), Inches(2.0), Inches(0.7)
-        )
+        _add_logo_scaled(slide, client_logo, 7.5, 5.3, max_w=2.5, max_h=1.0)
 
     contact_lines = [
         "info@activedmc.com",

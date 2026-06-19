@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import anthropic
 
 
@@ -64,6 +65,17 @@ EDITORIAL QUALITY RULES (apply to ALL generated text)
 - NEVER invent statistics, policies, company names, or examples
 - If data is missing or ambiguous, flag it — prefer omission over uncertainty
 - Tone: editor-friendly, not press-release language
+
+═══════════════════════════════════════════════════════════
+FORMAT CONSTRAINT — CONCISE FOR SLIDES
+═══════════════════════════════════════════════════════════
+This output goes on PowerPoint slides, NOT a document. Keep it punchy:
+- Each "what" field: max 1-2 sentences (under 120 characters ideal)
+- Each "implication" field: max 2-3 sentences (under 200 characters ideal)
+- Each "summary" field: max 3-4 sentences
+- Observation bullets (went_well, improve): max 2 sentences each
+- Recommendation descriptions: max 3 sentences each
+Prioritise clarity and impact over thoroughness.
 
 ═══════════════════════════════════════════════════════════
 MEDIA OUTREACH INTELLIGENCE (for narrative / media sections)
@@ -331,13 +343,28 @@ Be specific to the data provided and the GCC/UAE/KSA market context — never ge
         raise RuntimeError("Empty response from Claude API")
     raw = response.content[0].text.strip()
     # Strip markdown code fences if present
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        raw = raw.strip()
+    raw = re.sub(r'^```(?:json)?\s*\n?', '', raw)
+    raw = re.sub(r'\n?```\s*$', '', raw)
+    raw = raw.strip()
 
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        # Response may have been truncated — try to salvage partial JSON
+        # by closing open brackets/braces
+        salvage = raw
+        if salvage.count('[') > salvage.count(']'):
+            # Find the last complete item and close the arrays/objects
+            last_brace = salvage.rfind('}')
+            if last_brace > 0:
+                salvage = salvage[:last_brace + 1]
+            open_brackets = salvage.count('[') - salvage.count(']')
+            open_braces = salvage.count('{') - salvage.count('}')
+            salvage += ']' * open_brackets + '}' * open_braces
+        try:
+            return json.loads(salvage)
+        except json.JSONDecodeError:
+            raise RuntimeError(f"Could not parse AI response as JSON: {raw[:200]}...")
 
 
 def generate_all_insights(

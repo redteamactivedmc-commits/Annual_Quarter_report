@@ -340,11 +340,15 @@ def build_kpi_slide(prs, blank, client, tracker_data, insights):
     if isinstance(insights, dict):
         for ins in insights.get("insights", []):
             if isinstance(ins, dict):
-                insight_items.append(f"{ins.get('what', '')} — {ins.get('implication', '')}")
+                what = ins.get('what', '')
+                implication = ins.get('implication', '')
+                if len(implication) > 180:
+                    implication = implication[:177] + "..."
+                insight_items.append(f"{what} — {implication}")
             elif isinstance(ins, str):
                 insight_items.append(ins)
     if insight_items:
-        add_bullet_list(slide, insight_items[:5], 0.5, 3.2, 12, 3.5, font_size=12)
+        add_bullet_list(slide, insight_items[:4], 0.5, 3.2, 12, 3.5, font_size=11)
     add_footer(slide, client)
 
 
@@ -470,9 +474,13 @@ def build_analysis_slide(prs, blank, client, tracker_data, insights):
     if isinstance(insights, dict):
         for ins in insights.get("insights", []):
             if isinstance(ins, dict):
-                insight_items.append(f"{ins.get('what', '')} — {ins.get('implication', '')}")
+                what = ins.get('what', '')
+                implication = ins.get('implication', '')
+                if len(implication) > 200:
+                    implication = implication[:197] + "..."
+                insight_items.append(f"{what} — {implication}")
     if insight_items:
-        add_bullet_list(slide, insight_items[:3], 0.5, 4.5, 12, 2.5, font_size=11)
+        add_bullet_list(slide, insight_items[:3], 0.5, 4.5, 12, 2.5, font_size=10)
     add_footer(slide, client)
 
 
@@ -494,9 +502,13 @@ def build_media_relations_slide(prs, blank, client, insights):
     if isinstance(insights, dict):
         for ins in insights.get("insights", []):
             if isinstance(ins, dict):
-                insight_items.append(ins.get("what", "") + " — " + ins.get("implication", ""))
+                what = ins.get("what", "")
+                implication = ins.get("implication", "")
+                if len(implication) > 200:
+                    implication = implication[:197] + "..."
+                insight_items.append(f"{what} — {implication}")
     if insight_items:
-        add_bullet_list(slide, insight_items[:5], 6, 1.5, 6.5, 5, font_size=12)
+        add_bullet_list(slide, insight_items[:5], 6, 1.5, 6.5, 5, font_size=11)
     else:
         add_text_box(slide, "[Media relations insights will appear here]", 6, 2, 6, 1,
                      font_size=12, color="888888")
@@ -512,13 +524,19 @@ def build_narrative_slide(prs, blank, client, insights):
     if isinstance(insights, dict):
         summary = insights.get("summary", "")
         if summary:
-            add_text_box(slide, summary, 0.5, 1.0, 12, 0.6,
-                         font_size=13, color="1A2B4A")
+            if len(summary) > 500:
+                summary = summary[:497] + "..."
+            add_text_box(slide, summary, 0.5, 1.0, 12, 0.8,
+                         font_size=12, color="1A2B4A")
         for ins in insights.get("insights", []):
             if isinstance(ins, dict):
-                insight_items.append(f"{ins.get('what', '')} → {ins.get('implication', '')}")
+                what = ins.get('what', '')
+                implication = ins.get('implication', '')
+                if len(implication) > 200:
+                    implication = implication[:197] + "..."
+                insight_items.append(f"{what} → {implication}")
     if insight_items:
-        add_bullet_list(slide, insight_items[:6], 0.5, 1.8, 12, 5, font_size=12)
+        add_bullet_list(slide, insight_items[:4], 0.5, 2.0, 12, 4.8, font_size=11)
     add_footer(slide, client)
 
 
@@ -539,14 +557,14 @@ def build_observation_slide(prs, blank, client, insights):
     went_well = []
     improve = []
     if isinstance(insights, dict):
-        went_well = insights.get("went_well", [])
-        improve = insights.get("improve", [])
+        went_well = [s[:250] + "..." if len(str(s)) > 250 else str(s) for s in insights.get("went_well", [])]
+        improve = [s[:250] + "..." if len(str(s)) > 250 else str(s) for s in insights.get("improve", [])]
     if went_well:
-        add_bullet_list(slide, went_well[:4], 6.5, 1.5, 6, 2, font_size=11, bullet_color="0097B2")
+        add_bullet_list(slide, went_well[:3], 6.5, 1.5, 6, 2, font_size=10, bullet_color="0097B2")
     add_text_box(slide, "What Could Be Better", 6.5, 3.8, 6, 0.4,
                  font_size=16, bold=True, color="0097B2")
     if improve:
-        add_bullet_list(slide, improve[:4], 6.5, 4.3, 6, 2.5, font_size=11, bullet_color="0097B2")
+        add_bullet_list(slide, improve[:3], 6.5, 4.3, 6, 2.5, font_size=10, bullet_color="0097B2")
     add_footer(slide, client)
 
 
@@ -564,11 +582,13 @@ def build_recommendations_slide(prs, blank, client, insights):
             if isinstance(rec, dict):
                 title = rec.get("title", "")
                 desc = rec.get("description", "")
+                if len(desc) > 250:
+                    desc = desc[:247] + "..."
                 text = f"{i}. {title}: {desc}"
             else:
                 text = f"{i}. {rec}"
             add_text_box(slide, text, 0.5, y, 12, 0.8,
-                         font_size=12, color="1A2B4A")
+                         font_size=11, color="1A2B4A")
             y += 0.95
     else:
         add_text_box(slide, "Recommendations will be available once an Anthropic API key is configured in Settings.",

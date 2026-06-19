@@ -284,8 +284,9 @@ def build_contents_slide(prs, blank, client, sections):
                  font_size=36, bold=True, color="FFFFFF")
     content_sections = [
         "Campaign Overview", "Coverage Highlights", "Deliverables Overview",
-        "Coverage Analysis", "Media Relations", "Driving the Narrative",
-        "Observation / Feedback", "Strategic Recommendations", "90-Day Plan"
+        "Coverage Analysis", "Top Publications", "Media Relations",
+        "Driving the Narrative", "Observation / Feedback",
+        "Strategic Recommendations", "90-Day Plan"
     ]
     y = 1.0
     for i, s in enumerate(content_sections, 1):
@@ -360,11 +361,12 @@ def build_highlights_slide(prs, blank, client, tracker_data):
     rows = tracker_data.get("rows", [])
     y = 1.2
     for r in rows[:8]:
-        headline = str(r.get("headline", ""))[:80]
+        headline = str(r.get("headline", ""))
         pub = str(r.get("publication", ""))
         tier = str(r.get("tier", ""))
         lang = str(r.get("language", ""))
-        line = f"{pub} — {headline} [{tier}, {lang}]"
+        tier_str = f"Tier {tier}" if tier and not tier.lower().startswith("tier") else tier
+        line = f"{pub} — {headline} [{tier_str}, {lang}]"
         add_text_box(slide, f"• {line}", 0.5, y, 12, 0.35,
                      font_size=11, color="1A2B4A")
         y += 0.45
@@ -466,6 +468,15 @@ def build_analysis_slide(prs, blank, client, tracker_data, insights):
         chart.legend.position = XL_LEGEND_POSITION.BOTTOM
         chart.legend.include_in_layout = False
         chart.legend.font.size = Pt(9)
+        plot = chart.plots[0]
+        plot.has_data_labels = True
+        data_labels = plot.data_labels
+        data_labels.show_value = True
+        data_labels.show_category_name = False
+        data_labels.show_percentage = False
+        data_labels.font.size = Pt(9)
+        data_labels.font.bold = True
+        data_labels.font.color.rgb = hex_to_rgb("0D1B2E")
         series = chart.series[0]
         for i, point in enumerate(series.points):
             point.format.fill.solid()
@@ -481,6 +492,56 @@ def build_analysis_slide(prs, blank, client, tracker_data, insights):
                 insight_items.append(f"{what} — {implication}")
     if insight_items:
         add_bullet_list(slide, insight_items[:3], 0.5, 4.5, 12, 2.5, font_size=10)
+    add_footer(slide, client)
+
+
+def build_top_publications_slide(prs, blank, client, tracker_data):
+    """Build a horizontal bar chart of the top publications by placement count."""
+    slide = prs.slides.add_slide(blank)
+    add_header_rule(slide)
+    add_text_box(slide, "Top Publications", 0.5, 0.15, 6, 0.5,
+                 font_size=28, bold=True, color="0D1B2E")
+    top_pubs = tracker_data.get("top_publications", [])
+    if not top_pubs:
+        add_text_box(slide, "No publication data available.", 0.5, 2, 12, 1,
+                     font_size=14, color="888888")
+        add_footer(slide, client)
+        return
+    chart_data = ChartData()
+    pub_names = [p[0] for p in top_pubs]
+    pub_counts = [p[1] for p in top_pubs]
+    chart_data.categories = pub_names
+    chart_data.add_series("Placements", pub_counts)
+    chart_frame = slide.shapes.add_chart(
+        XL_CHART_TYPE.BAR_CLUSTERED,
+        Inches(0.5), Inches(1.2), Inches(12), Inches(4.5),
+        chart_data
+    )
+    chart = chart_frame.chart
+    chart.has_title = False
+    chart.has_legend = False
+    chart.value_axis.visible = False
+    chart.value_axis.has_major_gridlines = False
+    chart.category_axis.tick_labels.font.size = Pt(11)
+    chart.category_axis.tick_labels.font.name = FONT
+    chart.category_axis.tick_labels.font.color.rgb = hex_to_rgb("1A2B4A")
+    chart.category_axis.format.line.fill.background()
+    plot = chart.plots[0]
+    plot.gap_width = 80
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.show_value = True
+    data_labels.font.size = Pt(11)
+    data_labels.font.bold = True
+    data_labels.font.color.rgb = hex_to_rgb("FFFFFF")
+    data_labels.number_format = '0'
+    series = chart.series[0]
+    series.format.fill.solid()
+    series.format.fill.fore_color.rgb = hex_to_rgb("0097B2")
+    total = tracker_data.get("total_placements", 0)
+    if total:
+        add_text_box(slide, f"Top {len(top_pubs)} of {total} total placements",
+                     0.5, 5.9, 6, 0.3, font_size=10, color="888888")
     add_footer(slide, client)
 
 
@@ -717,6 +778,9 @@ def build_report(client, period, tracker_data, deliverables, insights, output_pa
 
     build_section_divider(prs, blank, "Coverage Analysis")
     build_analysis_slide(prs, blank, client, tracker_data, insights.get("coverage_analysis", {}))
+
+    build_section_divider(prs, blank, "Top Publications")
+    build_top_publications_slide(prs, blank, client, tracker_data)
 
     build_section_divider(prs, blank, "Media Relations")
     build_media_relations_slide(prs, blank, client, insights.get("media_relations", {}))

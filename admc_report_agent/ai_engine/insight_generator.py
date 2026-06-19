@@ -404,10 +404,15 @@ def generate_all_insights(
             print(f"  [AI] {section}: OK ({len(str(result))} chars)")
         except Exception as e:
             print(f"  [AI] {section}: FAILED — {e}")
-            fallback = {"error": str(e), "insights": [], "summary": f"[Insight generation failed: {e}]"}
+            is_auth_error = "401" in str(e) or "authentication" in str(e).lower() or "api-key" in str(e).lower() or "api_key" in str(e).lower()
+            if is_auth_error:
+                friendly = "AI insights unavailable — please check your Anthropic API key in Settings."
+            else:
+                friendly = "AI insights could not be generated for this section."
+            fallback = {"error": str(e), "insights": [], "summary": friendly}
             if section == "observation":
-                fallback["went_well"] = [f"[Could not generate: {e}]"]
-                fallback["improve"] = [f"[Could not generate: {e}]"]
+                fallback["went_well"] = ["Data not available — see coverage stats for this period."]
+                fallback["improve"] = ["Review pending — AI insights require a valid API key."]
             elif section == "recommendations":
                 fallback["recommendations"] = []
             elif section == "ninety_day_plan":

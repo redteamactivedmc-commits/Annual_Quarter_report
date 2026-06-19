@@ -571,8 +571,8 @@ def build_recommendations_slide(prs, blank, client, insights):
                          font_size=12, color="1A2B4A")
             y += 0.95
     else:
-        add_text_box(slide, "[Recommendations could not be generated — check API key]", 0.5, 2, 12, 1,
-                     font_size=14, color="888888")
+        add_text_box(slide, "Recommendations will be available once an Anthropic API key is configured in Settings.",
+                     0.5, 2, 12, 1, font_size=14, color="888888")
     add_footer(slide, client)
 
 
@@ -603,6 +603,9 @@ def build_plan_slide(prs, blank, client, insights):
     if isinstance(insights, dict):
         months = insights.get("months", [])
     y = 1.7
+    if not months:
+        add_text_box(slide, "90-day plan will be available once an Anthropic API key is configured in Settings.",
+                     0.5, 2.0, 12, 1, font_size=14, color="888888")
     for m in months[:3]:
         if not isinstance(m, dict):
             continue

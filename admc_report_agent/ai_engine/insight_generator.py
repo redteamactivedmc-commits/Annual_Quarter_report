@@ -67,17 +67,6 @@ EDITORIAL QUALITY RULES (apply to ALL generated text)
 - Tone: editor-friendly, not press-release language
 
 ═══════════════════════════════════════════════════════════
-FORMAT CONSTRAINT — CONCISE FOR SLIDES
-═══════════════════════════════════════════════════════════
-This output goes on PowerPoint slides, NOT a document. Keep it punchy:
-- Each "what" field: max 1-2 sentences (under 120 characters ideal)
-- Each "implication" field: max 2-3 sentences (under 200 characters ideal)
-- Each "summary" field: max 3-4 sentences
-- Observation bullets (went_well, improve): max 2 sentences each
-- Recommendation descriptions: max 3 sentences each
-Prioritise clarity and impact over thoroughness.
-
-═══════════════════════════════════════════════════════════
 MEDIA OUTREACH INTELLIGENCE (for narrative / media sections)
 ═══════════════════════════════════════════════════════════
 Angle selection priority (in order):

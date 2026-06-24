@@ -467,9 +467,10 @@ def build_analysis_slide(prs, blank, client, tracker_data, insights):
         plot = chart.plots[0]
         plot.has_data_labels = True
         data_labels = plot.data_labels
-        data_labels.show_value = True
-        data_labels.show_category_name = False
-        data_labels.show_percentage = False
+        data_labels.show_value = False
+        data_labels.show_category_name = True
+        data_labels.show_percentage = True
+        data_labels.number_format = '0%'
         data_labels.font.size = Pt(9)
         data_labels.font.bold = True
         data_labels.font.color.rgb = hex_to_rgb("0D1B2E")
@@ -483,7 +484,7 @@ def build_analysis_slide(prs, blank, client, tracker_data, insights):
             if isinstance(ins, dict):
                 insight_items.append(f"{ins.get('what', '')} — {ins.get('implication', '')}")
     if insight_items:
-        add_bullet_list(slide, insight_items[:3], 0.5, 4.5, 12, 2.5, font_size=10)
+        add_bullet_list(slide, insight_items[:4], 0.5, 4.4, 12, 2.8, font_size=11)
     add_footer(slide, client)
 
 

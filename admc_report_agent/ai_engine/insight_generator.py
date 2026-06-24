@@ -5,15 +5,17 @@ import anthropic
 
 
 def _load_skills_context():
-    """Load PR skills from the skills/ directory to enrich AI prompts."""
+    """Load ALL PR skills from the skills/ directory to enrich AI prompts."""
     skills_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "skills")
     context_parts = []
-    for fname in ("Media_Outreach_SKILL.md", "regional-fit-checks.md", "outreach-templates.md"):
-        fpath = os.path.join(skills_dir, fname)
-        if os.path.exists(fpath):
+    if not os.path.isdir(skills_dir):
+        return ""
+    for fname in sorted(os.listdir(skills_dir)):
+        if fname.endswith((".md", ".skill")):
+            fpath = os.path.join(skills_dir, fname)
             try:
                 with open(fpath, "r", encoding="utf-8") as f:
-                    context_parts.append(f.read())
+                    context_parts.append(f"--- {fname} ---\n{f.read()}")
             except Exception:
                 pass
     return "\n\n".join(context_parts)
@@ -284,11 +286,11 @@ def generate_section_insights(
         json_schema = '{"insights": [{"what": "...", "why": "...", "implication": "..."}], "summary": "..."}'
 
     skills_block = ""
-    if section_name in ("ninety_day_plan", "recommendations", "narrative", "media_relations") and _SKILLS_CONTEXT:
+    if _SKILLS_CONTEXT:
         skills_block = f"""
 
 PR AGENCY SKILLS & REGIONAL CONTEXT (use these to ground your output):
-{_SKILLS_CONTEXT[:3000]}
+{_SKILLS_CONTEXT[:4000]}
 """
 
     user_prompt = f"""Generate insights for the "{section_name}" section of an Active DMC communications report.

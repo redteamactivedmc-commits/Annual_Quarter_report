@@ -13,13 +13,31 @@ def _parse_date(val):
         return val.date()
     if isinstance(val, date):
         return val
+    # Handle numeric Excel serial dates (days since 1899-12-30)
+    if isinstance(val, (int, float)):
+        try:
+            serial = int(val)
+            if 1 < serial < 200000:
+                base = datetime(1899, 12, 30)
+                from datetime import timedelta
+                return (base + timedelta(days=serial)).date()
+        except (ValueError, OverflowError):
+            pass
+        return None
     s = str(val).strip()
     if not s:
         return None
     for fmt in ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%d-%m-%Y", "%d.%m.%Y",
-                "%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y"):
+                "%B %d, %Y", "%b %d, %Y", "%d %B %Y", "%d %b %Y",
+                "%b-%y", "%B-%y", "%b %y", "%B %y",
+                "%d %b", "%d-%b", "%d/%b",
+                "%m/%d/%y", "%d/%m/%y"):
         try:
-            return datetime.strptime(s, fmt).date()
+            parsed = datetime.strptime(s, fmt)
+            # For formats without year, use current year
+            if parsed.year == 1900:
+                parsed = parsed.replace(year=datetime.now().year)
+            return parsed.date()
         except ValueError:
             continue
     return None
@@ -74,18 +92,28 @@ def _parse_worksheet(ws, period_start=None, period_end=None) -> dict:
     if period_start or period_end:
         start_dt = _parse_date(period_start) if isinstance(period_start, str) else period_start
         end_dt = _parse_date(period_end) if isinstance(period_end, str) else period_end
+        print(f"  [Tracker] Filter dates: start={start_dt} end={end_dt}")
+        if rows_data:
+            sample_date = rows_data[0].get("date")
+            print(f"  [Tracker] Sample row date: {repr(sample_date)} -> parsed: {_parse_date(sample_date)}")
         filtered = []
+        skipped_no_date = 0
+        skipped_before = 0
+        skipped_after = 0
         for r in rows_data:
             row_date = _parse_date(r.get("date"))
             if row_date is None:
-                filtered.append(r)
+                skipped_no_date += 1
                 continue
             if start_dt and row_date < start_dt:
+                skipped_before += 1
                 continue
             if end_dt and row_date > end_dt:
+                skipped_after += 1
                 continue
             filtered.append(r)
-        print(f"  [Tracker] Date filter: {len(rows_data)} rows -> {len(filtered)} rows in period {period_start} to {period_end}")
+        print(f"  [Tracker] Date filter: {len(rows_data)} rows -> {len(filtered)} kept, "
+              f"{skipped_no_date} no date, {skipped_before} before range, {skipped_after} after range")
         rows_data = filtered
 
     # Compute summary statistics
